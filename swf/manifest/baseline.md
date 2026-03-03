@@ -21,7 +21,7 @@ SWF生成の基準はここを正本とする。
 - repo: ewo-swf-knowledge
 - branch: source
 - path: swf/source/
-- tag: TBD
+- tag: v0.1
 - commit: TBD
 ---
 
