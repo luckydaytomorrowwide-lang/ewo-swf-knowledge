@@ -27,7 +27,7 @@ SWF生成の基準はここを正本とする。
 
 ## 4. Test (Repro Assets)
 - repo: ewo-swf-knowledge
-- branch: TBD
+- branch: main
 - tag: v0.1
 - commit: 78308bbba3ff9a58a0e04ac1b7a7f7523494e5ad
 
