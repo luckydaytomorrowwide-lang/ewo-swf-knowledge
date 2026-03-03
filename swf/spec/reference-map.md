@@ -6,7 +6,7 @@ Path: activities/
 
 ## テスト資材
 Branch: main  
-Path: tests/<case>/<test>/
+Path: `tests/<case>/<test>/`
 
 ## ログ解析
 Read:
