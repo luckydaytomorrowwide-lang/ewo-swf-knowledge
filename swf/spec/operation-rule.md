@@ -9,6 +9,7 @@
 ## Placement Rule
 - Any fixed structure must be written in spec.
 - Do not rely on chat for structural rules.
+- Placeholder such as <case> must be wrapped with backticks to avoid HTML rendering issues.
 
 ## Status Control
 - status.json controls run and analysis trigger.
