@@ -19,10 +19,10 @@ SWF生成の基準はここを正本とする。
 
 ## 3. Source (Implementation)
 - repo: ewo-swf-knowledge
-- branch: TBD
+- branch: source
+- path: swf/source/
 - tag: TBD
 - commit: TBD
-
 ---
 
 ## 4. Test (Repro Assets)
