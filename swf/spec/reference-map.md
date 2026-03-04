@@ -1,25 +1,30 @@
-# Reference Map
+# 参照マップ
 
 ## EWO生成
-Branch: main  
-Path: activities/
+
+参照ブランチ：main  
+参照パス：activities/
 
 ## テスト資材
-Branch: main  
-Path: `tests/<case>/<test>/`
+
+参照ブランチ：main  
+参照パス：`tests/<case>/<test>/`
 
 ## ログ解析
-Read:
+
+読み込み対象：
 - ewo.json
 - input.json
 - table.json
 - log/*
 
-Write:
+出力：
 - analysis.md
 
 ## 仕様
+
 spec/
 
 ## 決定事項
+
 decisions/
