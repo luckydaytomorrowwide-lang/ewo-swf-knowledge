@@ -1,29 +1,22 @@
-# PLAN
+# DO
 
-EWO作成工程。
-
-詳細仕様は spec を参照する。
+Workflow 実行工程。
 
 ---
 
 ## 参照
 
-EWO生成仕様
-../../spec/ewo-generation.md
-
 PDCA構造
 ../../spec/pdca-structure.md
 
-テスト構造
-../../spec/test-structure.md
+workflow 実装（sourceブランチ）
 
-examples（参考EWO）
-../../examples/
+ewo/source/workflows
+ewo/source/activities
 
 ---
 
 ## 作業概要
 
-1 新しい EWO.json を作成する
-2 テストケースを作成する
-3 テスト資材を配置する
+1 workflow を実行する
+2 実行ログを取得する
