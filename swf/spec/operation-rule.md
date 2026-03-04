@@ -1,26 +1,40 @@
-# Operation Rule
+# 運用ルール
 
-## Autonomous Principle
-- Do autonomously what can be done autonomously.
-- Clearly state uncertainties.
-- Ask at most two clarification questions.
-- Do not stop the workflow.
+## 1. 自律実行原則
 
-## Placement Rule
-- Any fixed structure must be written in spec.
-- Do not rely on chat for structural rules.
-- Placeholder such as <case> must be wrapped with backticks to avoid HTML rendering issues.
+- 自律的に実行できる処理は、可能な限り自律的に実行する。
+- 不確実な点は必ず明示する。
+- 確認質問は最大2点までとする。
+- 不明点があっても処理を停止させない。
 
-## Status Control
-- status.json controls run and analysis trigger.
+## 2. 構造記載ルール
 
-## EWO Generation Constraint
+- 置き場所や構造が固定されているものは、必ず spec に記載する。
+- 構造ルールをチャット上の合意だけにしない。
+- `<case>` のようなプレースホルダは、Markdown表示崩れを防ぐためバッククォートで囲む。
 
-- EWO must be generated only using AC and WF definitions that exist in the GitHub repository.
-- New AC or operation types must NOT be invented.
-- When generating a new EWO, one of the following approaches must be used:
+## 3. EWO生成制約
 
-  1. Combine existing AC/WF components already defined in `activities/` or `workflow/`.
-  2. Modify an existing, proven EWO as a base template.
+- EWOは、GitHubリポジトリ内に存在する AC および WF 定義のみを使用して生成する。
+- 存在しない AC や operation を新規に作成してはならない。
+- 新規EWOを生成する場合は、以下のいずれかの方法を用いる。
 
-- If required functionality does not exist in the repository, the limitation must be explicitly stated instead of creating a fictional AC.
+  1. `activities/` または `workflow/` に存在する既存コンポーネントを組み合わせる。
+  2. 実績のある既存EWOをベースに修正する。
+
+- 必要な機能がリポジトリ内に存在しない場合は、仮想的なACを作らず「実現不可」と明示する。
+
+## 4. ステータス管理
+
+- `status.json` により実行・解析の状態を管理する。
+- 使用可能な値は以下の3種類のみとする。
+
+  - ready_for_run
+  - ready_for_analysis
+  - done
+
+## 5. ブランチ参照原則
+
+- 正式参照ブランチは main とする。
+- source は明示された場合のみ参照する。
+- 自動的なブランチ推測・切替は行わない。
