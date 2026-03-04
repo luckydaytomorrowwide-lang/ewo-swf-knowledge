@@ -1,25 +1,29 @@
 # PLAN
 
-EWO作成の設計フェーズ
+EWO作成工程。
 
-目的
-- 作成するEWOの目的を明確にする
-- 入力と期待出力を定義する
-- 完了条件を決める
+詳細仕様は spec を参照する。
 
-参照順
-spec → decisions → examples → templates → checklists
+---
 
-参照先
+## 参照
 
-spec
-../../spec/
+EWO生成仕様
+../../spec/ewo-generation.md
 
-decisions
-../../decisions/
+PDCA構造
+../../spec/pdca-structure.md
 
-templates
-../../templates/
+テスト構造
+../../spec/test-structure.md
 
-checklists
-../../checklists/
+examples（参考EWO）
+../../examples/
+
+---
+
+## 作業概要
+
+1 新しい EWO.json を作成する
+2 テストケースを作成する
+3 テスト資材を配置する
