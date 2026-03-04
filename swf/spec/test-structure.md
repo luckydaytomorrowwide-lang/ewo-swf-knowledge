@@ -1,6 +1,5 @@
-# Test Structure
+# テスト構造
 
-```text
 tests/
   case-xxx/
     test-yyy/
