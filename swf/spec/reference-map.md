@@ -2,8 +2,10 @@
 
 ## EWO生成
 
-参照ブランチ：main  
-参照パス：activities/
+参照ブランチ：source  
+参照パス：
+- swf/source/activities/
+- swf/source/workflows/
 
 ## テスト資材
 
