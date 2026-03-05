@@ -1,6 +1,6 @@
-# DO
+# PLAN
 
-Workflow 実行工程。
+Workflow 作成工程。
 
 ---
 
@@ -18,5 +18,4 @@ ewo/source/activities
 
 ## 作業概要
 
-1 workflow を実行する
-2 実行ログを取得する
+1 EWO.json を作成する
