@@ -1,0 +1,116 @@
+=== EWO Workflow Execution ===
+Workflow: BuildLayoutBlockWF v1.0.0
+Input: {"tableId":"baseinfo_deploy_01kjydtd8080e81p3app6av4ee","key":"","nCat":"anchor","parentId":"01KJYDTD8080E81P3APP6AV4EE","parentKey":"","nodeId":"","nodeLabels":""}
+
+[Launcher] Starting BuildLayoutBlockWF (corr-mmei63bj-1)
+[Launcher] Inputs: {"tableId":"baseinfo_deploy_01kjydtd8080e81p3app6av4ee","key":"","nCat":"anchor","parentId":"01KJYDTD8080E81P3APP6AV4EE","parentKey":"","nodeId":"","nodeLabels":""}
+[Coordinator:BuildLayoutBlockWF] Started with inputs: {"tableId":"baseinfo_deploy_01kjydtd8080e81p3app6av4ee","key":"","nCat":"anchor","parentId":"01KJYDTD8080E81P3APP6AV4EE","parentKey":"","nodeId":"","nodeLabels":""}
+[Coordinator:BuildLayoutBlockWF] readyLoop: ready=[SearchOrderLine, RetrieveUCatCol, BuildKeyAnchor, SearchLinesForLoop, SearchAnchorsForRecursion]
+[Coordinator:BuildLayoutBlockWF] Dispatching SearchOrderLine.cmd (SearchLineAC)
+[Common Activities] Loading all activities...
+[Common Activities] Loaded 118 activities
+[AC Worker] Executing SearchOrderLine (SearchLineAC)
+[SearchLineAC] 実行開始: {tableId: "baseinfo_deploy_01kjydtd8080e81p3app6av4...", key: "order", nCat: "line", parentId: "01KJYDTD8080E81P3APP6AV4EE"}
+[SearchLineAC] SQL: SELECT line_id FROM ? WHERE REPLACE(parent_id, '.ulid', '') = ? AND n_cat = ? AND key = ? Array(4)
+[SearchLineAC] 完了 (11.500ms): {lineIds: Array(0)}
+[Coordinator:BuildLayoutBlockWF] Dispatching RetrieveUCatCol.cmd (RetrieveColumnAC)
+[AC Worker] Executing RetrieveUCatCol (RetrieveColumnAC)
+[RetrieveColumnAC] 実行開始: {tableId: "baseinfo_deploy_01kjydtd8080e81p3app6av4...", lineId: "01KJYDTD8080E81P3APP6AV4EE", column: "u_cat"}
+[RetrieveColumnAC] SQL: SELECT u_cat FROM ? WHERE line_id = ? Array(2)
+[RetrieveColumnAC] 完了 (0.900ms): {columns: Array(1)}
+[Coordinator:BuildLayoutBlockWF] Dispatching BuildKeyAnchor.cmd (BuildLayoutBlockKeyWF)
+[Supervisor] wfCall(boundary=true) detected: BuildKeyAnchor → BuildLayoutBlockKeyWF
+[AnswerBus] BuildKeyAnchor.error  corr=corr-mmei63bj-1 acid=BuildKeyAnchor  data={"error":"callee \"BuildLayoutBlockKeyWF\" not found in registry"}
+[Coordinator:BuildLayoutBlockWF] BuildKeyAnchor error: callee "BuildLayoutBlockKeyWF" not found in registry
+[Coordinator:BuildLayoutBlockWF] Dispatching SearchLinesForLoop.cmd (SearchLineAC)
+[AC Worker] Executing SearchLinesForLoop (SearchLineAC)
+[SearchLineAC] 実行開始: {tableId: "baseinfo_deploy_01kjydtd8080e81p3app6av4...", key: "", nCat: "line", parentId: "01KJYDTD8080E81P3APP6AV4EE"}
+[SearchLineAC] SQL: SELECT line_id FROM ? WHERE REPLACE(parent_id, '.ulid', '') = ? AND n_cat = ? Array(3)
+[SearchLineAC] 完了 (1.100ms): {lineIds: Array(7)}
+[Coordinator:BuildLayoutBlockWF] Dispatching SearchAnchorsForRecursion.cmd (SearchLineAC)
+[AC Worker] Executing SearchAnchorsForRecursion (SearchLineAC)
+[SearchLineAC] 実行開始: {tableId: "baseinfo_deploy_01kjydtd8080e81p3app6av4...", nCat: "anchor", key: "", parentId: "01KJYDTD8080E81P3APP6AV4EE"}
+[SearchLineAC] SQL: SELECT line_id FROM ? WHERE REPLACE(parent_id, '.ulid', '') = ? AND n_cat = ? Array(3)
+[SearchLineAC] 完了 (0.500ms): {lineIds: Array(7)}
+🍍 "tableStruct" store installed 🆕
+🍍 "tableData" store installed 🆕
+[AC Worker] SearchOrderLine done → payloadStore[wf:corr-mmei63bj-1:SearchOrderLine]
+[AnswerBus] SearchOrderLine.done  corr=corr-mmei63bj-1 acid=SearchOrderLine  data={"outputRef":"wf:corr-mmei63bj-1:SearchOrderLine"}
+[Mediator] Route R-SearchOrderLine: SearchOrderLine.done → 1 emit(s)
+[RequestBus:BuildLayoutBlockWF] FirstOrderLineId.rows  corr=corr-mmei63bj-1  data={"payloadRef":"wf:corr-mmei63bj-1:SearchOrderLine"}
+[Coordinator:BuildLayoutBlockWF] readyLoop: ready=[FirstOrderLineId]
+[Coordinator:BuildLayoutBlockWF] Dispatching FirstOrderLineId.cmd (FirstRowAC)
+[AC Worker] Executing FirstOrderLineId (FirstRowAC)
+[FirstRowAC] 実行開始: {rows: Array(0)}
+[FirstRowAC] Empty array or invalid input
+[FirstRowAC] 完了 (0.000ms): null
+[Coordinator:BuildLayoutBlockWF] SearchOrderLine → done
+[Launcher] SearchOrderLine result: {"lineIds":[]}
+[AC Worker] RetrieveUCatCol done → payloadStore[wf:corr-mmei63bj-1:RetrieveUCatCol]
+[AnswerBus] RetrieveUCatCol.done  corr=corr-mmei63bj-1 acid=RetrieveUCatCol  data={"outputRef":"wf:corr-mmei63bj-1:RetrieveUCatCol"}
+[Mediator] Route R-RetrieveUCatCol: RetrieveUCatCol.done → 1 emit(s)
+[RequestBus:BuildLayoutBlockWF] FirstUCat.rows  corr=corr-mmei63bj-1  data={"payloadRef":"wf:corr-mmei63bj-1:RetrieveUCatCol"}
+[Coordinator:BuildLayoutBlockWF] readyLoop: ready=[FirstUCat]
+[Coordinator:BuildLayoutBlockWF] Dispatching FirstUCat.cmd (FirstRowAC)
+[AC Worker] Executing FirstUCat (FirstRowAC)
+[FirstRowAC] 実行開始: {rows: Array(1)}
+[FirstRowAC] 完了 (0.000ms): root
+[Coordinator:BuildLayoutBlockWF] RetrieveUCatCol → done
+[Launcher] RetrieveUCatCol result: {"columns":["root"]}
+[AC Worker] SearchLinesForLoop done → payloadStore[wf:corr-mmei63bj-1:SearchLinesForLoop]
+[AnswerBus] SearchLinesForLoop.done  corr=corr-mmei63bj-1 acid=SearchLinesForLoop  data={"outputRef":"wf:corr-mmei63bj-1:SearchLinesForLoop"}
+[Mediator] Route R-SearchLinesForLoop: SearchLinesForLoop.done → 1 emit(s)
+[RequestBus:BuildLayoutBlockWF] $zone:lineZone.input  corr=corr-mmei63bj-1  data={"payloadRef":"wf:corr-mmei63bj-1:SearchLinesForLoop"}
+[Launcher] Zone lineZone input: 7 items
+[Coordinator:BuildLayoutBlockWF] Zone lineZone: 7 items → dispatching iterations
+[Coordinator:BuildLayoutBlockWF] SearchLinesForLoop → done
+[Launcher] SearchLinesForLoop result: {"lineIds":["01KJYDTD805FXWK967B62V8CQ8","01KJYDTD80EAMFE1JQ7P4HXFBQ","01KJYDTD80JSJPCS40JS40Z0YC","01KJYDTD8WG76T4EMM95G6D3QK","01KJYDTD8W98SQKK377BDWZA3Z","01KJYDTD8WFSX3BGAJJJNJ1VE7","01KJYDTD8XE7A7TFQQTFCHWXA2"]}
+[AC Worker] SearchAnchorsForRecursion done → payloadStore[wf:corr-mmei63bj-1:SearchAnchorsForRecursion]
+[AnswerBus] SearchAnchorsForRecursion.done  corr=corr-mmei63bj-1 acid=SearchAnchorsForRecursion  data={"outputRef":"wf:corr-mmei63bj-1:SearchAnchorsForRecursion"}
+[Mediator] Route R-SearchAnchorsForRecursion: SearchAnchorsForRecursion.done → 1 emit(s)
+[RequestBus:BuildLayoutBlockWF] $zone:recursiveZone.input  corr=corr-mmei63bj-1  data={"payloadRef":"wf:corr-mmei63bj-1:SearchAnchorsForRecursion"}
+[Launcher] Zone recursiveZone input: 7 items
+[Coordinator:BuildLayoutBlockWF] Zone recursiveZone: 7 items → dispatching iterations
+[Coordinator:BuildLayoutBlockWF] SearchAnchorsForRecursion → done
+[Launcher] SearchAnchorsForRecursion result: {"lineIds":["01KJYDTD80PDJ4KXXTBQ8ZCP4K","01KJYDTD83NH0AQGX6QCKYXAQS","01KJYDTD84NADGZRPQ85DKZEQA","01KJYDTD84R16A3PH2JR0Z6RRA","01KJYDTD8ACCS2H8946EJD615J","01KJYDTD8BEY8QQWN0NFV7HR3J","01KJYDTD8BA6RC7ZQPB4Z9RS0D"]}
+[AC Worker] FirstOrderLineId done → payloadStore[wf:corr-mmei63bj-1:FirstOrderLineId]
+[AnswerBus] FirstOrderLineId.done  corr=corr-mmei63bj-1 acid=FirstOrderLineId  data={"outputRef":"wf:corr-mmei63bj-1:FirstOrderLineId"}
+[Mediator] Route R-FirstOrderLineId: FirstOrderLineId.done → 1 emit(s)
+[RequestBus:BuildLayoutBlockWF] RetrieveOrderCol.lineId  corr=corr-mmei63bj-1  data={"payloadRef":"wf:corr-mmei63bj-1:FirstOrderLineId"}
+[Coordinator:BuildLayoutBlockWF] readyLoop: ready=[RetrieveOrderCol]
+[Coordinator:BuildLayoutBlockWF] Dispatching RetrieveOrderCol.cmd (RetrieveColumnAC)
+[AC Worker] Executing RetrieveOrderCol (RetrieveColumnAC)
+[RetrieveColumnAC] 実行開始: {tableId: "baseinfo_deploy_01kjydtd8080e81p3app6av4...", lineId: undefined, column: "value"}
+[RetrieveColumnAC] 完了 (0.100ms): {columns: Array(0)}
+[Coordinator:BuildLayoutBlockWF] FirstOrderLineId → done
+[Launcher] FirstOrderLineId result: {}
+[AC Worker] FirstUCat done → payloadStore[wf:corr-mmei63bj-1:FirstUCat]
+[AnswerBus] FirstUCat.done  corr=corr-mmei63bj-1 acid=FirstUCat  data={"outputRef":"wf:corr-mmei63bj-1:FirstUCat"}
+[Mediator] Route R-FirstUCat: FirstUCat.done → 3 emit(s)
+[RequestBus:BuildLayoutBlockWF] BuildRowParent.propertyValue  corr=corr-mmei63bj-1  data={"payloadRef":"wf:corr-mmei63bj-1:FirstUCat"}
+[RequestBus:BuildLayoutBlockWF] BuildRowLine.propertyValue  corr=corr-mmei63bj-1  data={"payloadRef":"wf:corr-mmei63bj-1:FirstUCat"}
+[RequestBus:BuildLayoutBlockWF] ProcessLineColumns.anchorUcat  corr=corr-mmei63bj-1  data={"payloadRef":"wf:corr-mmei63bj-1:FirstUCat"}
+[Coordinator:BuildLayoutBlockWF] FirstUCat → done
+[Launcher] FirstUCat result: {"_result":"root"}
+[AC Worker] RetrieveOrderCol done → payloadStore[wf:corr-mmei63bj-1:RetrieveOrderCol]
+[AnswerBus] RetrieveOrderCol.done  corr=corr-mmei63bj-1 acid=RetrieveOrderCol  data={"outputRef":"wf:corr-mmei63bj-1:RetrieveOrderCol"}
+[Mediator] Route R-RetrieveOrderCol: RetrieveOrderCol.done → 1 emit(s)
+[RequestBus:BuildLayoutBlockWF] FirstOrderValue.rows  corr=corr-mmei63bj-1  data={"payloadRef":"wf:corr-mmei63bj-1:RetrieveOrderCol"}
+[Coordinator:BuildLayoutBlockWF] readyLoop: ready=[FirstOrderValue]
+[Coordinator:BuildLayoutBlockWF] Dispatching FirstOrderValue.cmd (FirstRowAC)
+[AC Worker] Executing FirstOrderValue (FirstRowAC)
+[FirstRowAC] 実行開始: {rows: Array(0)}
+[FirstRowAC] Empty array or invalid input
+[FirstRowAC] 完了 (0.000ms): null
+[Coordinator:BuildLayoutBlockWF] RetrieveOrderCol → done
+[Launcher] RetrieveOrderCol result: {"columns":[]}
+[AC Worker] FirstOrderValue done → payloadStore[wf:corr-mmei63bj-1:FirstOrderValue]
+[AnswerBus] FirstOrderValue.done  corr=corr-mmei63bj-1 acid=FirstOrderValue  data={"outputRef":"wf:corr-mmei63bj-1:FirstOrderValue"}
+[Mediator] Route R-FirstOrderValue: FirstOrderValue.done → 1 emit(s)
+[RequestBus:BuildLayoutBlockWF] BuildRowParent.order  corr=corr-mmei63bj-1  data={"payloadRef":"wf:corr-mmei63bj-1:FirstOrderValue"}
+[Coordinator:BuildLayoutBlockWF] FirstOrderValue → done
+[Launcher] FirstOrderValue result: {}
+
+=== Execution Result ===
+Status: failed
+Error: BuildKeyAnchor: callee "BuildLayoutBlockKeyWF" not found in registry
