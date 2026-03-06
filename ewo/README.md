@@ -1,11 +1,151 @@
-# EWO Knowledge Root
+# EWO Knowledge
 
-このディレクトリは EWO Factory の knowledge（SSOT）です。
+このディレクトリは **EWO Workflow の知識ベース**です。
+SWF生成やEWO解析を **再現可能な形で進めるための情報**を格納します。
 
-参照順（必須）:
-spec → decisions → examples → templates → checklists
+ここにある情報は **役割ごとに整理されており、AIや人が同じ手順で参照できる構造**になっています。
 
-入口:
-- docs/overview.md
-- docs/pdca/
-- manifest/baseline.md
+---
+
+# 参照順（基本ルール）
+
+EWO関連の作業では、以下の順で参照します。
+
+1. **spec**
+2. **decisions**
+3. **examples**
+4. **templates**
+5. **checklists**
+6. **reference（必要に応じて）**
+
+---
+
+# 各ディレクトリの役割
+
+## spec
+
+EWOの正式仕様です。
+
+ここに書かれている内容は **正とみなされます**。
+AIや人はまずここを参照します。
+
+例
+
+* SWF構造
+* JSON構造
+* workflow仕様
+
+---
+
+## decisions
+
+設計上の決定事項を記録します。
+
+仕様の背景や、過去の設計判断を理解するための資料です。
+
+---
+
+## examples
+
+正しい実装例を格納します。
+
+AIが構造を理解したり、新しいJSONを生成するときの参考になります。
+
+---
+
+## templates
+
+生成時に利用するテンプレートです。
+
+例
+
+* JSONテンプレート
+* workflowテンプレート
+
+---
+
+## checklists
+
+作業時の確認項目です。
+
+例
+
+* SWF作成チェック
+* JSON検証チェック
+
+---
+
+# Reference Materials
+
+`reference/` には **EWOに関する参考資料**を格納します。
+
+これらは **成果物や正式仕様ではありません。**
+
+以下の特徴があります。
+
+* 不完全な可能性があります
+* 古い可能性があります
+* 実装と一致しない可能性があります
+
+---
+
+## reference の目的
+
+referenceは以下の用途で利用されます。
+
+* 構造が不明な場合の調査
+* ツール挙動の理解
+* 実装背景の理解
+* ログ解析の補助
+
+例
+
+* EWO Authoring Tool
+* EWO Runner
+* データ構造
+* 依存関係マップ
+
+---
+
+## AIの利用ルール
+
+AIは **必要に応じて reference を参照できます。**
+
+ただし
+
+* referenceの参照は必須ではありません
+* spec / examples で判断できる場合は参照不要です
+
+---
+
+## 注意事項
+
+reference の内容と
+
+* JSON
+* 実装
+* 実行ログ
+
+が矛盾する場合、
+
+reference を正とみなしてはいけません。
+
+その場合 AI は **ALERT を出してください。**
+
+---
+
+# Repository Policy
+
+このリポジトリでは以下を基本ルールとします。
+
+* main ブランチへ直接変更しない
+* 変更は PR で反映する
+* 作業中の決定事項は `decisions/` に記録する
+
+---
+
+# Goal
+
+このリポジトリの目的は
+
+**EWO Workflow の生成・検証・実行を再現可能なプロセスとして固定すること**です。
