@@ -5,9 +5,9 @@
 例
 
 - dependency map
+- module relationship
 
 ## Documents
-- dependency-map.md  
-  EWO関連ツールの依存関係マップ- 
 
-- module relationship
+- dependency-map.md  
+  EWO関連ツールの依存関係を整理した参考資料
