@@ -5,17 +5,27 @@ status: unofficial
 confidence: low | medium | high
 source: manual | reverse engineering | code | observation
 
+---
+
 ## Overview
 
-この資料は参考情報です。正式仕様ではありません。
+この資料は参考情報です。
+
+正式仕様ではありません。
+
+---
 
 ## Purpose
 
-この資料で分かることを記載してください。
+この資料で分かることを記載します。
+
+---
 
 ## Contents
 
-内容を記載してください。
+内容を記載します。
+
+---
 
 ## Caution
 
