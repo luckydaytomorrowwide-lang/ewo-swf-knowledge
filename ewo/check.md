@@ -70,9 +70,7 @@ CHECK工程では
 
 CHECK工程では次のチェックリストを使用する。
 
-例
-
-check-check-phase-trace-compare.md
+ewo/checklists/check-check-phase-trace-compare.md
 
 チェックリストの項目に従って
 
@@ -88,8 +86,8 @@ check-check-phase-trace-compare.md
 
 # 試験レポート
 
-CHECK工程では  
-**チェックリストの結果を試験レポートとして整理する。**
+チェックリストの結果を整理し、  
+**CHECK試験レポートとして出力する。**
 
 試験レポートには次を必ず記載する。
 
