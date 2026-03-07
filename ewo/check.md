@@ -61,6 +61,9 @@ main/ewo/spec/ewo-json-spec.md
 
 CHECK工程では  
 **checklists を使用して解析を行う。**
+**description と workflow 内容の整合性**
+**description と ewo構造の整合性**
+
 
 基本手順
 
