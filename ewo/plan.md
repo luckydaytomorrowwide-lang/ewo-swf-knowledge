@@ -67,6 +67,20 @@ workflowが実際に何をしているか理解する。
 3 EWO構造を設計する  
 4 EWO.json を作成する  
 
+### description の設計
+
+EWO を生成する場合は、workflow が何を行うものかを判断し、
+`description` にその概要を記載する前提で設計します。
+
+description は workflow の目的・対象・主要な処理内容が分かる
+簡潔な説明にします。
+
+workflow 構造、入出力、主要ノード構成を根拠に
+その workflow の役割を判断して記載します。
+
+作業 と `spec/ewo-json-spec.md` の定義に不整合がある場合は、
+生成を進めずアラートを上げます。
+
 ---
 
 # 成果物
