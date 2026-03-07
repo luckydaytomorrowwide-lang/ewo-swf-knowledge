@@ -53,6 +53,7 @@ workflowがどのような処理順序で動作するか理解する。
 EWOが正しいことを確認するため
 **ewo仕様書を必ず参照する。**
 
+main/ewo/spec/ewo-json-spec.md
 
 ---
 
