@@ -1,0 +1,69 @@
+{
+  "id": "SyncScheduleWF",
+  "version": "1.0.0",
+  "name": "SyncScheduleWF",
+  "description": "スケジュール同期を実行する。バックエンドのSyncScheduleWF.phpへ委譲。",
+  "inputs": {
+    "topicNodeId": { "schema": "string" },
+    "scheduleNodeId": { "schema": "string" },
+    "kind": { "schema": "string" },
+    "timeRange": { "schema": "string" },
+    "comment": { "schema": "string" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "Execute",
+        "operation": "SyncScheduleWF",
+        "deps": {
+          "topicNodeId": { "sourceAcId": "$input", "sourcePort": "topicNodeId" },
+          "scheduleNodeId": { "sourceAcId": "$input", "sourcePort": "scheduleNodeId" },
+          "kind": { "sourceAcId": "$input", "sourcePort": "kind" },
+          "timeRange": { "sourceAcId": "$input", "sourcePort": "timeRange" },
+          "comment": { "sourceAcId": "$input", "sourcePort": "comment" }
+        },
+        "outputs": { "nodeId": {}, "tableId": {}, "rootLineId": {} },
+        "wfCall": { "callee": "SyncScheduleWF", "boundary": true }
+      }
+    ],
+    "outputs": {
+      "nodeId": "Execute.nodeId",
+      "tableId": "Execute.tableId",
+      "rootLineId": "Execute.rootLineId"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-Execute",
+        "when": { "type": "Execute.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "SyncScheduleWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.85 },
+    "nodes": [
+      {
+        "id": "node-start", "type": "ewoStart", "position": { "x": 50, "y": 150 },
+        "data": { "inputs": [{ "name": "topicNodeId", "type": "string" }, { "name": "scheduleNodeId", "type": "string" }, { "name": "kind", "type": "string" }, { "name": "timeRange", "type": "string" }, { "name": "comment", "type": "string" }] }
+      },
+      {
+        "id": "node-Execute", "type": "ewoWfCall", "position": { "x": 400, "y": 150 },
+        "data": { "label": "Execute", "operation": "SyncScheduleWF", "inputs": [{ "name": "topicNodeId", "type": "string" }, { "name": "scheduleNodeId", "type": "string" }, { "name": "kind", "type": "string" }, { "name": "timeRange", "type": "string" }, { "name": "comment", "type": "string" }], "outputs": [{ "name": "nodeId", "type": "string" }, { "name": "tableId", "type": "string" }, { "name": "rootLineId", "type": "string" }], "wfCall": { "callee": "SyncScheduleWF", "boundary": true } }
+      },
+      {
+        "id": "node-end", "type": "ewoEnd", "position": { "x": 720, "y": 150 },
+        "data": { "outputs": [{ "name": "nodeId", "type": "string" }, { "name": "tableId", "type": "string" }, { "name": "rootLineId", "type": "string" }] }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-exec", "source": "node-start", "target": "node-Execute" },
+      { "id": "e-exec-end", "source": "node-Execute", "target": "node-end" }
+    ]
+  }
+}

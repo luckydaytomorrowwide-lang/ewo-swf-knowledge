@@ -1,0 +1,628 @@
+{
+  "id": "GetPageTableWF",
+  "version": "1.0.0",
+  "name": "GetPageTableWF",
+  "description": "ページテーブルを取得するWF。pageIdからノードのdataプロパティを取得し、一時テーブルに登録。structテーブルとdataテーブルを取得・登録し、マージしたテーブルを返す。",
+  "inputs": {
+    "pageId": { "schema": "string?" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "GetPageId",
+        "operation": "GetPageIdAC",
+        "guard": "$input.pageId == undefined",
+        "deps": {},
+        "outputs": { "pageId": {} }
+      },
+      {
+        "id": "SearchPage",
+        "operation": "SearchNodeAC",
+        "deps": {
+          "nodeId": { "oneOf": [
+            { "sourceAcId": "$input", "sourcePort": "pageId" },
+            { "sourceAcId": "GetPageId", "sourcePort": "pageId" }
+          ]}
+        },
+        "outputs": { "nodeIds": {} }
+      },
+      {
+        "id": "FirstSearchResult",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "SearchPage", "sourcePort": "nodeIds" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "GetNodeProperty",
+        "operation": "GetNodePropertyAC",
+        "deps": {
+          "nodeId": { "sourceAcId": "FirstSearchResult", "sourcePort": "row" },
+          "property": { "literal": "data" }
+        },
+        "outputs": { "value": {} }
+      },
+      {
+        "id": "CreateUlid",
+        "operation": "CreateUlidAC",
+        "deps": {},
+        "outputs": { "ulid": {} }
+      },
+      {
+        "id": "BuildTempTableId",
+        "operation": "BuildTemporaryTableIdAC",
+        "deps": {
+          "tableId": { "literal": "data_property" },
+          "ulid": { "sourceAcId": "CreateUlid", "sourcePort": "ulid" }
+        },
+        "outputs": { "tempTableId": {} }
+      },
+      {
+        "id": "RegisterTemp",
+        "operation": "RegisterTemporaryAC",
+        "deps": {
+          "tableId": { "sourceAcId": "BuildTempTableId", "sourcePort": "tempTableId" },
+          "rows": { "sourceAcId": "GetNodeProperty", "sourcePort": "value" }
+        },
+        "outputs": { "tableId": {} }
+      },
+      {
+        "id": "SearchTableIdLine",
+        "operation": "SearchLineAC",
+        "deps": {
+          "tableId": { "sourceAcId": "RegisterTemp", "sourcePort": "tableId" },
+          "key": { "literal": "tableId" }
+        },
+        "outputs": { "lineIds": {} }
+      },
+      {
+        "id": "FirstTableIdLine",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "SearchTableIdLine", "sourcePort": "lineIds" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "RetrieveTableIdCol",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "BuildTempTableId", "sourcePort": "tempTableId" },
+          "lineId": { "sourceAcId": "FirstTableIdLine", "sourcePort": "row" },
+          "column": { "literal": "value" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstStructTableId",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveTableIdCol", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "RetrieveStructTable",
+        "operation": "RetrieveTableAC",
+        "deps": {
+          "tableId": { "sourceAcId": "FirstStructTableId", "sourcePort": "row" }
+        },
+        "outputs": { "rows": {} }
+      },
+      {
+        "id": "RegisterStruct",
+        "operation": "RegisterStructAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveStructTable", "sourcePort": "rows" }
+        },
+        "outputs": {}
+      },
+      {
+        "id": "ConvertToDataTableName",
+        "operation": "ConvertStructToDataTableNameAC",
+        "deps": {
+          "tableId": { "sourceAcId": "FirstStructTableId", "sourcePort": "row" }
+        },
+        "outputs": { "dataTableId": {} }
+      },
+      {
+        "id": "RetrieveDataTable",
+        "operation": "RetrieveTableAC",
+        "deps": {
+          "tableId": { "sourceAcId": "ConvertToDataTableName", "sourcePort": "dataTableId" }
+        },
+        "outputs": { "rows": {} }
+      },
+      {
+        "id": "RegisterData",
+        "operation": "RegisterDataAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveDataTable", "sourcePort": "rows" }
+        },
+        "outputs": {}
+      },
+      {
+        "id": "BuildMergedTableId",
+        "operation": "BuildTemporaryTableIdAC",
+        "deps": {
+          "tableId": { "sourceAcId": "FirstStructTableId", "sourcePort": "row" },
+          "ulid": { "sourceAcId": "CreateUlid", "sourcePort": "ulid" }
+        },
+        "outputs": { "tempTableId": {} }
+      },
+      {
+        "id": "MergeTable",
+        "operation": "MergeTableAC",
+        "deps": {
+          "structTableId": { "sourceAcId": "FirstStructTableId", "sourcePort": "row" },
+          "dataTableId": { "sourceAcId": "ConvertToDataTableName", "sourcePort": "dataTableId" }
+        },
+        "outputs": { "rows": {} }
+      },
+      {
+        "id": "RegisterMerged",
+        "operation": "RegisterTemporaryAC",
+        "deps": {
+          "tableId": { "sourceAcId": "BuildMergedTableId", "sourcePort": "tempTableId" },
+          "rows": { "sourceAcId": "MergeTable", "sourcePort": "rows" }
+        },
+        "outputs": { "tableId": {} }
+      }
+    ],
+    "outputs": {
+      "tableId": "RegisterMerged.tableId"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-GetPageId",
+        "when": { "type": "GetPageId.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "SearchPage.nodeId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SearchPage",
+        "when": { "type": "SearchPage.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstSearchResult.rows", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstSearchResult",
+        "when": { "type": "FirstSearchResult.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "GetNodeProperty.nodeId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-GetNodeProperty",
+        "when": { "type": "GetNodeProperty.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RegisterTemp.rows", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-CreateUlid",
+        "when": { "type": "CreateUlid.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "BuildTempTableId.ulid", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" },
+          { "type": "BuildMergedTableId.ulid", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-BuildTempTableId",
+        "when": { "type": "BuildTempTableId.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RegisterTemp.tableId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" },
+          { "type": "RetrieveTableIdCol.tableId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RegisterTemp",
+        "when": { "type": "RegisterTemp.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "SearchTableIdLine.tableId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SearchTableIdLine",
+        "when": { "type": "SearchTableIdLine.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstTableIdLine.rows", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstTableIdLine",
+        "when": { "type": "FirstTableIdLine.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RetrieveTableIdCol.lineId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RetrieveTableIdCol",
+        "when": { "type": "RetrieveTableIdCol.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstStructTableId.rows", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstStructTableId",
+        "when": { "type": "FirstStructTableId.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RetrieveStructTable.tableId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" },
+          { "type": "ConvertToDataTableName.tableId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" },
+          { "type": "BuildMergedTableId.tableId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" },
+          { "type": "MergeTable.structTableId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RetrieveStructTable",
+        "when": { "type": "RetrieveStructTable.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RegisterStruct.rows", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RegisterStruct",
+        "when": { "type": "RegisterStruct.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-ConvertToDataTableName",
+        "when": { "type": "ConvertToDataTableName.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RetrieveDataTable.tableId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" },
+          { "type": "MergeTable.dataTableId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RetrieveDataTable",
+        "when": { "type": "RetrieveDataTable.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RegisterData.rows", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RegisterData",
+        "when": { "type": "RegisterData.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-BuildMergedTableId",
+        "when": { "type": "BuildMergedTableId.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RegisterMerged.tableId", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-MergeTable",
+        "when": { "type": "MergeTable.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RegisterMerged.rows", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RegisterMerged",
+        "when": { "type": "RegisterMerged.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "GetPageTableWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.35 },
+    "nodes": [
+      {
+        "id": "node-start",
+        "type": "ewoStart",
+        "position": { "x": 50, "y": 300 },
+        "data": {
+          "inputs": [{ "name": "pageId", "type": "string?" }]
+        }
+      },
+      {
+        "id": "node-GetPageId",
+        "type": "ewoAc",
+        "position": { "x": 300, "y": 100 },
+        "data": {
+          "label": "GetPageId",
+          "operation": "GetPageIdAC",
+          "guard": "$input.pageId == undefined",
+          "inputs": [],
+          "outputs": [{ "name": "pageId", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-CreateUlid",
+        "type": "ewoAc",
+        "position": { "x": 300, "y": 500 },
+        "data": {
+          "label": "CreateUlid",
+          "operation": "CreateUlidAC",
+          "inputs": [],
+          "outputs": [{ "name": "ulid", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-SearchPage",
+        "type": "ewoAc",
+        "position": { "x": 550, "y": 300 },
+        "data": {
+          "label": "SearchPage",
+          "operation": "SearchNodeAC",
+          "inputs": [{ "name": "nodeId", "type": "string" }],
+          "outputs": [{ "name": "nodeIds", "type": "string[]" }]
+        }
+      },
+      {
+        "id": "node-BuildTempTableId",
+        "type": "ewoAc",
+        "position": { "x": 550, "y": 500 },
+        "data": {
+          "label": "BuildTempTableId",
+          "operation": "BuildTemporaryTableIdAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "ulid", "type": "string" }
+          ],
+          "outputs": [{ "name": "tempTableId", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-FirstSearchResult",
+        "type": "ewoAc",
+        "position": { "x": 800, "y": 300 },
+        "data": {
+          "label": "FirstSearchResult",
+          "operation": "FirstRowAC",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": [{ "name": "row", "type": "any" }]
+        }
+      },
+      {
+        "id": "node-GetNodeProperty",
+        "type": "ewoAc",
+        "position": { "x": 1050, "y": 300 },
+        "data": {
+          "label": "GetNodeProperty",
+          "operation": "GetNodePropertyAC",
+          "inputs": [
+            { "name": "nodeId", "type": "string" },
+            { "name": "property", "type": "string" }
+          ],
+          "outputs": [{ "name": "value", "type": "any" }]
+        }
+      },
+      {
+        "id": "node-RegisterTemp",
+        "type": "ewoAc",
+        "position": { "x": 1300, "y": 300 },
+        "data": {
+          "label": "RegisterTemp",
+          "operation": "RegisterTemporaryAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "rows", "type": "any[]" }
+          ],
+          "outputs": [{ "name": "tableId", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-SearchTableIdLine",
+        "type": "ewoAc",
+        "position": { "x": 1550, "y": 300 },
+        "data": {
+          "label": "SearchTableIdLine",
+          "operation": "SearchLineAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "key", "type": "string" }
+          ],
+          "outputs": [{ "name": "lineIds", "type": "string[]" }]
+        }
+      },
+      {
+        "id": "node-FirstTableIdLine",
+        "type": "ewoAc",
+        "position": { "x": 1800, "y": 300 },
+        "data": {
+          "label": "FirstTableIdLine",
+          "operation": "FirstRowAC",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": [{ "name": "row", "type": "any" }]
+        }
+      },
+      {
+        "id": "node-RetrieveTableIdCol",
+        "type": "ewoAc",
+        "position": { "x": 2050, "y": 300 },
+        "data": {
+          "label": "RetrieveTableIdCol",
+          "operation": "RetrieveColumnAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "column", "type": "string" }
+          ],
+          "outputs": [{ "name": "columns", "type": "any[]" }]
+        }
+      },
+      {
+        "id": "node-FirstStructTableId",
+        "type": "ewoAc",
+        "position": { "x": 2300, "y": 300 },
+        "data": {
+          "label": "FirstStructTableId",
+          "operation": "FirstRowAC",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": [{ "name": "row", "type": "any" }]
+        }
+      },
+      {
+        "id": "node-RetrieveStructTable",
+        "type": "ewoAc",
+        "position": { "x": 2600, "y": 80 },
+        "data": {
+          "label": "RetrieveStructTable",
+          "operation": "RetrieveTableAC",
+          "inputs": [{ "name": "tableId", "type": "string" }],
+          "outputs": [{ "name": "rows", "type": "any[]" }]
+        }
+      },
+      {
+        "id": "node-RegisterStruct",
+        "type": "ewoAc",
+        "position": { "x": 2850, "y": 80 },
+        "data": {
+          "label": "RegisterStruct",
+          "operation": "RegisterStructAC",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": []
+        }
+      },
+      {
+        "id": "node-ConvertToDataTableName",
+        "type": "ewoAc",
+        "position": { "x": 2600, "y": 300 },
+        "data": {
+          "label": "ConvertToDataTableName",
+          "operation": "ConvertStructToDataTableNameAC",
+          "inputs": [{ "name": "tableId", "type": "string" }],
+          "outputs": [{ "name": "dataTableId", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-RetrieveDataTable",
+        "type": "ewoAc",
+        "position": { "x": 2850, "y": 300 },
+        "data": {
+          "label": "RetrieveDataTable",
+          "operation": "RetrieveTableAC",
+          "inputs": [{ "name": "tableId", "type": "string" }],
+          "outputs": [{ "name": "rows", "type": "any[]" }]
+        }
+      },
+      {
+        "id": "node-RegisterData",
+        "type": "ewoAc",
+        "position": { "x": 3100, "y": 380 },
+        "data": {
+          "label": "RegisterData",
+          "operation": "RegisterDataAC",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": []
+        }
+      },
+      {
+        "id": "node-BuildMergedTableId",
+        "type": "ewoAc",
+        "position": { "x": 2600, "y": 520 },
+        "data": {
+          "label": "BuildMergedTableId",
+          "operation": "BuildTemporaryTableIdAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "ulid", "type": "string" }
+          ],
+          "outputs": [{ "name": "tempTableId", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-MergeTable",
+        "type": "ewoAc",
+        "position": { "x": 3100, "y": 150 },
+        "data": {
+          "label": "MergeTable",
+          "operation": "MergeTableAC",
+          "inputs": [
+            { "name": "structTableId", "type": "string" },
+            { "name": "dataTableId", "type": "string" }
+          ],
+          "outputs": [{ "name": "rows", "type": "any[]" }]
+        }
+      },
+      {
+        "id": "node-RegisterMerged",
+        "type": "ewoAc",
+        "position": { "x": 3350, "y": 300 },
+        "data": {
+          "label": "RegisterMerged",
+          "operation": "RegisterTemporaryAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "rows", "type": "any[]" }
+          ],
+          "outputs": [{ "name": "tableId", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-end",
+        "type": "ewoEnd",
+        "position": { "x": 3600, "y": 300 },
+        "data": {
+          "outputs": [{ "name": "tableId", "type": "string" }]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-getpageid", "source": "node-start", "target": "node-GetPageId", "sourceHandle": "output-pageId", "targetHandle": "input-trigger" },
+      { "id": "e-start-searchpage", "source": "node-start", "target": "node-SearchPage", "sourceHandle": "output-pageId", "targetHandle": "input-nodeId" },
+      { "id": "e-getpageid-searchpage", "source": "node-GetPageId", "target": "node-SearchPage", "sourceHandle": "output-pageId", "targetHandle": "input-nodeId" },
+      { "id": "e-searchpage-firstresult", "source": "node-SearchPage", "target": "node-FirstSearchResult", "sourceHandle": "output-nodeIds", "targetHandle": "input-rows" },
+      { "id": "e-firstresult-getnodeprop", "source": "node-FirstSearchResult", "target": "node-GetNodeProperty", "sourceHandle": "output-row", "targetHandle": "input-nodeId" },
+
+      { "id": "e-start-createulid", "source": "node-start", "target": "node-CreateUlid" },
+      { "id": "e-createulid-buildtempid", "source": "node-CreateUlid", "target": "node-BuildTempTableId", "sourceHandle": "output-ulid", "targetHandle": "input-ulid" },
+      { "id": "e-buildtempid-registertemp", "source": "node-BuildTempTableId", "target": "node-RegisterTemp", "sourceHandle": "output-tempTableId", "targetHandle": "input-tableId" },
+      { "id": "e-getnodeprop-registertemp", "source": "node-GetNodeProperty", "target": "node-RegisterTemp", "sourceHandle": "output-value", "targetHandle": "input-rows" },
+
+      { "id": "e-registertemp-searchtableidline", "source": "node-RegisterTemp", "target": "node-SearchTableIdLine", "sourceHandle": "output-tableId", "targetHandle": "input-tableId" },
+      { "id": "e-searchtableidline-firsttableidline", "source": "node-SearchTableIdLine", "target": "node-FirstTableIdLine", "sourceHandle": "output-lineIds", "targetHandle": "input-rows" },
+      { "id": "e-firsttableidline-retrievetableidcol", "source": "node-FirstTableIdLine", "target": "node-RetrieveTableIdCol", "sourceHandle": "output-row", "targetHandle": "input-lineId" },
+      { "id": "e-buildtempid-retrievetableidcol", "source": "node-BuildTempTableId", "target": "node-RetrieveTableIdCol", "sourceHandle": "output-tempTableId", "targetHandle": "input-tableId" },
+      { "id": "e-retrievetableidcol-firststructtableid", "source": "node-RetrieveTableIdCol", "target": "node-FirstStructTableId", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+
+      { "id": "e-firststructtableid-retrievestructtable", "source": "node-FirstStructTableId", "target": "node-RetrieveStructTable", "sourceHandle": "output-row", "targetHandle": "input-tableId" },
+      { "id": "e-retrievestructtable-registerstruct", "source": "node-RetrieveStructTable", "target": "node-RegisterStruct", "sourceHandle": "output-rows", "targetHandle": "input-rows" },
+
+      { "id": "e-firststructtableid-converttodatatablename", "source": "node-FirstStructTableId", "target": "node-ConvertToDataTableName", "sourceHandle": "output-row", "targetHandle": "input-tableId" },
+      { "id": "e-converttodatatablename-retrievedatatable", "source": "node-ConvertToDataTableName", "target": "node-RetrieveDataTable", "sourceHandle": "output-dataTableId", "targetHandle": "input-tableId" },
+      { "id": "e-retrievedatatable-registerdata", "source": "node-RetrieveDataTable", "target": "node-RegisterData", "sourceHandle": "output-rows", "targetHandle": "input-rows" },
+
+      { "id": "e-firststructtableid-buildmergedtableid", "source": "node-FirstStructTableId", "target": "node-BuildMergedTableId", "sourceHandle": "output-row", "targetHandle": "input-tableId" },
+      { "id": "e-createulid-buildmergedtableid", "source": "node-CreateUlid", "target": "node-BuildMergedTableId", "sourceHandle": "output-ulid", "targetHandle": "input-ulid" },
+
+      { "id": "e-firststructtableid-mergetable", "source": "node-FirstStructTableId", "target": "node-MergeTable", "sourceHandle": "output-row", "targetHandle": "input-structTableId" },
+      { "id": "e-converttodatatablename-mergetable", "source": "node-ConvertToDataTableName", "target": "node-MergeTable", "sourceHandle": "output-dataTableId", "targetHandle": "input-dataTableId" },
+
+      { "id": "e-buildmergedtableid-registermerged", "source": "node-BuildMergedTableId", "target": "node-RegisterMerged", "sourceHandle": "output-tempTableId", "targetHandle": "input-tableId" },
+      { "id": "e-mergetable-registermerged", "source": "node-MergeTable", "target": "node-RegisterMerged", "sourceHandle": "output-rows", "targetHandle": "input-rows" },
+
+      { "id": "e-registermerged-end", "source": "node-RegisterMerged", "target": "node-end", "sourceHandle": "output-tableId", "targetHandle": "input-tableId" }
+    ]
+  }
+}

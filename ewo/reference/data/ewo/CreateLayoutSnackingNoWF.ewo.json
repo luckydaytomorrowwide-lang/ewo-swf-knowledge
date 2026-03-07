@@ -1,0 +1,489 @@
+{
+  "id": "CreateLayoutSnackingNoWF",
+  "version": "1.0.0",
+  "name": "CreateLayoutSnackingNoWF",
+  "description": "ネストループ: 検索行をイテレートし、各行でキーと設定行を構築する。RetrieveColumn→FirstRow(uCat)→SearchLine→ForEach lineId[BuildKey→ForEach column[BuildKeyColumn→CreateStructTableConfig]]→結果を平坦化。",
+  "inputs": {
+    "tableId": { "schema": "string" },
+    "key": { "schema": "string" },
+    "line": { "schema": "string" },
+    "nCat": { "schema": "string" },
+    "lineId": { "schema": "string" },
+    "blockKey": { "schema": "string" },
+    "column": { "schema": "string" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "RetrieveUCatCol",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "tableId" },
+          "lineId": { "sourceAcId": "$input", "sourcePort": "lineId" },
+          "column": { "literal": "u_cat" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstUCat",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveUCatCol", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "SearchLines",
+        "operation": "SearchLineAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "tableId" },
+          "key": { "sourceAcId": "$input", "sourcePort": "key" },
+          "nCat": { "sourceAcId": "$input", "sourcePort": "nCat" },
+          "parentId": { "sourceAcId": "$input", "sourcePort": "lineId" }
+        },
+        "outputs": { "lineIds": {} }
+      },
+
+      {
+        "id": "PassLineId",
+        "operation": "PassthroughAC",
+        "deps": {
+          "lineId": { "sourceAcId": "$zoneInput", "sourcePort": "lineItem" }
+        },
+        "outputs": { "lineId": {} }
+      },
+      {
+        "id": "BuildBlockKeyLine",
+        "operation": "BuildLayoutBlockKeyWF",
+        "deps": {
+          "parentKey": { "sourceAcId": "$input", "sourcePort": "blockKey" },
+          "blockKey": { "sourceAcId": "$zoneInput", "sourcePort": "lineItem" }
+        },
+        "outputs": { "blockKey": {} },
+        "wfCall": { "callee": "BuildLayoutBlockKeyWF", "boundary": true }
+      },
+      {
+        "id": "ColumnNames",
+        "operation": "LiteralArrayAC",
+        "deps": {
+          "items": { "literal": ["n_cat", "u_cat", "dep_id", "key", "i_type", "f_type", "value"] }
+        },
+        "outputs": { "array": {} }
+      },
+
+      {
+        "id": "BuildBlockKeyColumn",
+        "operation": "BuildLayoutBlockKeyWF",
+        "deps": {
+          "parentKey": { "sourceAcId": "BuildBlockKeyLine", "sourcePort": "blockKey" },
+          "blockKey": { "sourceAcId": "$zoneInput", "sourcePort": "columnItem" }
+        },
+        "outputs": { "blockKey": {} },
+        "wfCall": { "callee": "BuildLayoutBlockKeyWF", "boundary": true }
+      },
+      {
+        "id": "CreateStructTableConfig",
+        "operation": "CreateStructTableConfigWF",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "tableId" },
+          "column": { "sourceAcId": "$zoneInput", "sourcePort": "columnItem" },
+          "lineId": { "sourceAcId": "PassLineId", "sourcePort": "lineId" },
+          "anchorId": { "sourceAcId": "$input", "sourcePort": "lineId" },
+          "anchorUcat": { "sourceAcId": "FirstUCat", "sourcePort": "row" },
+          "blockKey": { "sourceAcId": "BuildBlockKeyColumn", "sourcePort": "blockKey" }
+        },
+        "outputs": { "structTableConfigRow": {} },
+        "wfCall": { "callee": "CreateStructTableConfigWF", "boundary": true }
+      },
+
+      {
+        "id": "CollectLineConfigRows",
+        "operation": "PassthroughAC",
+        "deps": {
+          "structTableConfigRows": { "sourceAcId": "$zone:columnZone", "sourcePort": "allConfigRows" }
+        },
+        "outputs": { "structTableConfigRows": {} }
+      },
+
+      {
+        "id": "FlattenResults",
+        "operation": "FlattenArrayAC",
+        "deps": {
+          "arrays": { "sourceAcId": "$zone:lineZone", "sourcePort": "allStructTableConfigRows" }
+        },
+        "outputs": { "structTableConfigRows": {} }
+      }
+    ],
+    "forEachZones": [
+      {
+        "id": "lineZone",
+        "collectionSource": {
+          "sourceAcId": "SearchLines",
+          "sourcePort": "lineIds"
+        },
+        "iterationParam": "lineItem",
+        "nodes": ["PassLineId", "BuildBlockKeyLine", "ColumnNames", "CollectLineConfigRows"],
+        "childZones": [
+          {
+            "id": "columnZone",
+            "collectionSource": {
+              "sourceAcId": "ColumnNames",
+              "sourcePort": "array"
+            },
+            "iterationParam": "columnItem",
+            "nodes": ["BuildBlockKeyColumn", "CreateStructTableConfig"],
+            "outputNodeId": "CreateStructTableConfig",
+            "outputPort": "structTableConfigRow",
+            "outputCollection": "allConfigRows"
+          }
+        ],
+        "outputNodeId": "CollectLineConfigRows",
+        "outputPort": "structTableConfigRows",
+        "outputCollection": "allStructTableConfigRows"
+      }
+    ],
+    "outputs": {
+      "structTableConfigRows": "FlattenResults.structTableConfigRows",
+      "lineIds": "SearchLines.lineIds"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-RetrieveUCatCol",
+        "when": { "type": "RetrieveUCatCol.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstUCat.rows", "wfid": "CreateLayoutSnackingNoWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstUCat",
+        "when": { "type": "FirstUCat.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "CreateStructTableConfig.anchorUcat", "wfid": "CreateLayoutSnackingNoWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SearchLines",
+        "when": { "type": "SearchLines.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "$zone:lineZone.input", "wfid": "CreateLayoutSnackingNoWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-PassLineId",
+        "when": { "type": "PassLineId.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "CreateStructTableConfig.lineId", "wfid": "CreateLayoutSnackingNoWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-BuildBlockKeyLine",
+        "when": { "type": "BuildBlockKeyLine.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "BuildBlockKeyColumn.parentKey", "wfid": "CreateLayoutSnackingNoWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-ColumnNames",
+        "when": { "type": "ColumnNames.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "$zone:columnZone.input", "wfid": "CreateLayoutSnackingNoWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-BuildBlockKeyColumn",
+        "when": { "type": "BuildBlockKeyColumn.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "CreateStructTableConfig.blockKey", "wfid": "CreateLayoutSnackingNoWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-CreateStructTableConfig",
+        "when": { "type": "CreateStructTableConfig.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-$zone:columnZone",
+        "when": { "type": "$zone:columnZone.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "CollectLineConfigRows.structTableConfigRows", "wfid": "CreateLayoutSnackingNoWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-CollectLineConfigRows",
+        "when": { "type": "CollectLineConfigRows.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-$zone:lineZone",
+        "when": { "type": "$zone:lineZone.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FlattenResults.arrays", "wfid": "CreateLayoutSnackingNoWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FlattenResults",
+        "when": { "type": "FlattenResults.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "CreateLayoutSnackingNoWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.45 },
+    "nodes": [
+      {
+        "id": "node-start",
+        "type": "ewoStart",
+        "position": { "x": 50, "y": 350 },
+        "data": {
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "key", "type": "string" },
+            { "name": "line", "type": "string" },
+            { "name": "nCat", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "blockKey", "type": "string" },
+            { "name": "column", "type": "string" }
+          ]
+        }
+      },
+      {
+        "id": "node-RetrieveUCatCol",
+        "type": "ewoAc",
+        "position": { "x": 350, "y": 150 },
+        "data": {
+          "label": "RetrieveUCatCol",
+          "operation": "RetrieveColumnAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "column", "type": "string" }
+          ],
+          "outputs": [{ "name": "columns", "type": "any[]" }]
+        }
+      },
+      {
+        "id": "node-FirstUCat",
+        "type": "ewoAc",
+        "position": { "x": 600, "y": 150 },
+        "data": {
+          "label": "FirstUCat",
+          "operation": "FirstRowAC",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": [{ "name": "row", "type": "any" }]
+        }
+      },
+      {
+        "id": "node-SearchLines",
+        "type": "ewoAc",
+        "position": { "x": 350, "y": 550 },
+        "data": {
+          "label": "SearchLines",
+          "operation": "SearchLineAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "key", "type": "string" },
+            { "name": "nCat", "type": "string" },
+            { "name": "parentId", "type": "string" }
+          ],
+          "outputs": [{ "name": "lineIds", "type": "string[]" }]
+        }
+      },
+
+      {
+        "id": "region-lineZone",
+        "type": "ewoForEachRegion",
+        "position": { "x": 850, "y": 50 },
+        "style": { "width": "1500px", "height": "700px" },
+        "data": {
+          "label": "LineZone (lineIds iterate)",
+          "zoneId": "lineZone",
+          "iterationParam": "lineItem",
+          "outputCollection": "allStructTableConfigRows"
+        }
+      },
+      {
+        "id": "node-PassLineId",
+        "type": "ewoAc",
+        "position": { "x": 40, "y": 80 },
+        "parentNode": "region-lineZone",
+        "extent": "parent",
+        "data": {
+          "label": "PassLineId",
+          "operation": "PassthroughAC",
+          "inputs": [{ "name": "lineId", "type": "string" }],
+          "outputs": [{ "name": "lineId", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-BuildBlockKeyLine",
+        "type": "ewoWfCall",
+        "position": { "x": 40, "y": 280 },
+        "parentNode": "region-lineZone",
+        "extent": "parent",
+        "data": {
+          "label": "BuildBlockKeyLine",
+          "operation": "BuildLayoutBlockKeyWF",
+          "inputs": [
+            { "name": "parentKey", "type": "string" },
+            { "name": "blockKey", "type": "string" }
+          ],
+          "outputs": [{ "name": "blockKey", "type": "string" }],
+          "wfCall": { "callee": "BuildLayoutBlockKeyWF", "boundary": true }
+        }
+      },
+      {
+        "id": "node-ColumnNames",
+        "type": "ewoAc",
+        "position": { "x": 300, "y": 80 },
+        "parentNode": "region-lineZone",
+        "extent": "parent",
+        "data": {
+          "label": "ColumnNames",
+          "operation": "LiteralArrayAC",
+          "inputs": [{ "name": "items", "type": "string[]" }],
+          "outputs": [{ "name": "array", "type": "string[]" }]
+        }
+      },
+      {
+        "id": "region-columnZone",
+        "type": "ewoForEachRegion",
+        "position": { "x": 300, "y": 200 },
+        "parentNode": "region-lineZone",
+        "extent": "parent",
+        "style": { "width": "850px", "height": "300px" },
+        "data": {
+          "label": "ColumnZone (columns iterate)",
+          "zoneId": "columnZone",
+          "iterationParam": "columnItem",
+          "outputCollection": "allConfigRows"
+        }
+      },
+      {
+        "id": "node-BuildBlockKeyColumn",
+        "type": "ewoWfCall",
+        "position": { "x": 40, "y": 80 },
+        "parentNode": "region-columnZone",
+        "extent": "parent",
+        "data": {
+          "label": "BuildBlockKeyColumn",
+          "operation": "BuildLayoutBlockKeyWF",
+          "inputs": [
+            { "name": "parentKey", "type": "string" },
+            { "name": "blockKey", "type": "string" }
+          ],
+          "outputs": [{ "name": "blockKey", "type": "string" }],
+          "wfCall": { "callee": "BuildLayoutBlockKeyWF", "boundary": true }
+        }
+      },
+      {
+        "id": "node-CreateStructTableConfig",
+        "type": "ewoWfCall",
+        "position": { "x": 380, "y": 80 },
+        "parentNode": "region-columnZone",
+        "extent": "parent",
+        "data": {
+          "label": "CreateStructTableConfig",
+          "operation": "CreateStructTableConfigWF",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "column", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "anchorId", "type": "string" },
+            { "name": "anchorUcat", "type": "string" },
+            { "name": "blockKey", "type": "string" }
+          ],
+          "outputs": [{ "name": "structTableConfigRow", "type": "object" }],
+          "wfCall": { "callee": "CreateStructTableConfigWF", "boundary": true }
+        }
+      },
+      {
+        "id": "node-CollectLineConfigRows",
+        "type": "ewoAc",
+        "position": { "x": 1200, "y": 350 },
+        "parentNode": "region-lineZone",
+        "extent": "parent",
+        "data": {
+          "label": "CollectLineConfigRows",
+          "operation": "PassthroughAC",
+          "inputs": [{ "name": "structTableConfigRows", "type": "object[]" }],
+          "outputs": [{ "name": "structTableConfigRows", "type": "object[]" }]
+        }
+      },
+
+      {
+        "id": "node-FlattenResults",
+        "type": "ewoAc",
+        "position": { "x": 2500, "y": 350 },
+        "data": {
+          "label": "FlattenResults",
+          "operation": "FlattenArrayAC",
+          "inputs": [{ "name": "arrays", "type": "object[][]" }],
+          "outputs": [{ "name": "structTableConfigRows", "type": "object[]" }]
+        }
+      },
+      {
+        "id": "node-end",
+        "type": "ewoEnd",
+        "position": { "x": 2800, "y": 350 },
+        "data": {
+          "outputs": [
+            { "name": "structTableConfigRows", "type": "object[]" },
+            { "name": "lineIds", "type": "string[]" }
+          ]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-retrieveUCat-tid", "source": "node-start", "target": "node-RetrieveUCatCol", "sourceHandle": "output-tableId", "targetHandle": "input-tableId" },
+      { "id": "e-start-retrieveUCat-lid", "source": "node-start", "target": "node-RetrieveUCatCol", "sourceHandle": "output-lineId", "targetHandle": "input-lineId" },
+      { "id": "e-retrieveUCat-first", "source": "node-RetrieveUCatCol", "target": "node-FirstUCat", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+
+      { "id": "e-start-searchLines-tid", "source": "node-start", "target": "node-SearchLines", "sourceHandle": "output-tableId", "targetHandle": "input-tableId" },
+      { "id": "e-start-searchLines-key", "source": "node-start", "target": "node-SearchLines", "sourceHandle": "output-key", "targetHandle": "input-key" },
+      { "id": "e-start-searchLines-nCat", "source": "node-start", "target": "node-SearchLines", "sourceHandle": "output-nCat", "targetHandle": "input-nCat" },
+      { "id": "e-start-searchLines-pid", "source": "node-start", "target": "node-SearchLines", "sourceHandle": "output-lineId", "targetHandle": "input-parentId" },
+
+      { "id": "e-searchLines-lineZone", "source": "node-SearchLines", "target": "region-lineZone", "sourceHandle": "output-lineIds", "targetHandle": "input-collection" },
+
+      { "id": "e-lineZone-passLineId", "source": "region-lineZone", "target": "node-PassLineId", "sourceHandle": "iter-out", "targetHandle": "input-lineId" },
+      { "id": "e-lineZone-buildKeyLine", "source": "region-lineZone", "target": "node-BuildBlockKeyLine", "sourceHandle": "iter-out", "targetHandle": "input-blockKey" },
+      { "id": "e-start-buildKeyLine-pk", "source": "node-start", "target": "node-BuildBlockKeyLine", "sourceHandle": "output-blockKey", "targetHandle": "input-parentKey" },
+
+      { "id": "e-columnNames-columnZone", "source": "node-ColumnNames", "target": "region-columnZone", "sourceHandle": "output-array", "targetHandle": "input-collection" },
+      { "id": "e-columnZone-buildKeyCol", "source": "region-columnZone", "target": "node-BuildBlockKeyColumn", "sourceHandle": "iter-out", "targetHandle": "input-blockKey" },
+      { "id": "e-buildKeyLine-buildKeyCol", "source": "node-BuildBlockKeyLine", "target": "node-BuildBlockKeyColumn", "sourceHandle": "output-blockKey", "targetHandle": "input-parentKey" },
+
+      { "id": "e-buildKeyCol-createConfig", "source": "node-BuildBlockKeyColumn", "target": "node-CreateStructTableConfig", "sourceHandle": "output-blockKey", "targetHandle": "input-blockKey" },
+      { "id": "e-columnZone-createConfig-col", "source": "region-columnZone", "target": "node-CreateStructTableConfig", "sourceHandle": "iter-out", "targetHandle": "input-column" },
+      { "id": "e-passLineId-createConfig", "source": "node-PassLineId", "target": "node-CreateStructTableConfig", "sourceHandle": "output-lineId", "targetHandle": "input-lineId" },
+      { "id": "e-start-createConfig-tid", "source": "node-start", "target": "node-CreateStructTableConfig", "sourceHandle": "output-tableId", "targetHandle": "input-tableId" },
+      { "id": "e-start-createConfig-aid", "source": "node-start", "target": "node-CreateStructTableConfig", "sourceHandle": "output-lineId", "targetHandle": "input-anchorId" },
+      { "id": "e-firstUCat-createConfig", "source": "node-FirstUCat", "target": "node-CreateStructTableConfig", "sourceHandle": "output-row", "targetHandle": "input-anchorUcat" },
+
+      { "id": "e-createConfig-collect-col", "source": "node-CreateStructTableConfig", "target": "region-columnZone", "sourceHandle": "output-structTableConfigRow", "targetHandle": "collect-in" },
+      { "id": "e-columnZone-collectLine", "source": "region-columnZone", "target": "node-CollectLineConfigRows", "sourceHandle": "output-results", "targetHandle": "input-structTableConfigRows" },
+      { "id": "e-collectLine-collect-line", "source": "node-CollectLineConfigRows", "target": "region-lineZone", "sourceHandle": "output-structTableConfigRows", "targetHandle": "collect-in" },
+
+      { "id": "e-lineZone-flatten", "source": "region-lineZone", "target": "node-FlattenResults", "sourceHandle": "output-results", "targetHandle": "input-arrays" },
+      { "id": "e-flatten-end", "source": "node-FlattenResults", "target": "node-end", "sourceHandle": "output-structTableConfigRows", "targetHandle": "input-structTableConfigRows" },
+      { "id": "e-searchLines-end", "source": "node-SearchLines", "target": "node-end", "sourceHandle": "output-lineIds", "targetHandle": "input-lineIds" }
+    ]
+  }
+}

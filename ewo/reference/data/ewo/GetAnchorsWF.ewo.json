@@ -1,0 +1,593 @@
+{
+  "id": "GetAnchorsWF",
+  "version": "1.0.0",
+  "name": "GetAnchorsWF",
+  "description": "親VAR_NAMEラインをSearchし、3段階ネストForEach: parentLine→parentAnchor→childAnchorで各childAnchorのVAR_NAME値を収集する。",
+  "inputs": {
+    "arg1": { "schema": "string" },
+    "arg2": { "schema": "string" },
+    "arg3": { "schema": "string" },
+    "arg4": { "schema": "string" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "SearchParentLines",
+        "operation": "SearchLineAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "tableType": { "literal": 3 },
+          "key": { "literal": "VAR_NAME" },
+          "value": { "sourceAcId": "$input", "sourcePort": "arg2" }
+        },
+        "outputs": { "lineIds": {} }
+      },
+
+      {
+        "id": "RetrieveParentIdCol",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "tableType": { "literal": 3 },
+          "lineId": { "sourceAcId": "$zoneInput", "sourcePort": "parentLine" },
+          "column": { "literal": "parent_id" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstParentId",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveParentIdCol", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "SearchParentAnchors",
+        "operation": "SearchLineAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "tableType": { "literal": 3 },
+          "lineId": { "sourceAcId": "FirstParentId", "sourcePort": "row" },
+          "nCat": { "literal": "anchor" },
+          "uCat": { "sourceAcId": "$input", "sourcePort": "arg3" }
+        },
+        "outputs": { "lineIds": {} }
+      },
+      {
+        "id": "FlattenInnerValues",
+        "operation": "FlattenArrayAC",
+        "deps": {
+          "nested": { "sourceAcId": "$zone:innerZone", "sourcePort": "innerValues" }
+        },
+        "outputs": { "values": {} }
+      },
+
+      {
+        "id": "SearchChildAnchors",
+        "operation": "SearchLineAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "tableType": { "literal": 3 },
+          "parentId": { "sourceAcId": "$zoneInput", "sourcePort": "parentAnchor" },
+          "nCat": { "literal": "anchor" },
+          "uCat": { "sourceAcId": "$input", "sourcePort": "arg4" }
+        },
+        "outputs": { "lineIds": {} }
+      },
+      {
+        "id": "CollectChildValues",
+        "operation": "CollectValuesAC",
+        "deps": {
+          "values": { "sourceAcId": "$zone:childZone", "sourcePort": "childValues" }
+        },
+        "outputs": { "values": {} }
+      },
+
+      {
+        "id": "SearchChildVarLine",
+        "operation": "SearchLineAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "tableType": { "literal": 3 },
+          "parentId": { "sourceAcId": "$zoneInput", "sourcePort": "childAnchor" },
+          "nCat": { "literal": "line" },
+          "key": { "literal": "VAR_NAME" }
+        },
+        "outputs": { "lineIds": {} }
+      },
+      {
+        "id": "FirstChildLine",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "SearchChildVarLine", "sourcePort": "lineIds" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "RetrieveChildValueCol",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "tableType": { "literal": 3 },
+          "lineId": { "sourceAcId": "FirstChildLine", "sourcePort": "row" },
+          "column": { "literal": "value" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstChildValue",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveChildValueCol", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      },
+
+      {
+        "id": "FlattenAllValues",
+        "operation": "FlattenArrayAC",
+        "deps": {
+          "nested": { "sourceAcId": "$zone:outerZone", "sourcePort": "allValues" }
+        },
+        "outputs": { "values": {} }
+      }
+    ],
+    "forEachZones": [
+      {
+        "id": "outerZone",
+        "collectionSource": {
+          "sourceAcId": "SearchParentLines",
+          "sourcePort": "lineIds"
+        },
+        "iterationParam": "parentLine",
+        "nodes": ["RetrieveParentIdCol", "FirstParentId", "SearchParentAnchors", "FlattenInnerValues"],
+        "childZones": [
+          {
+            "id": "innerZone",
+            "collectionSource": {
+              "sourceAcId": "SearchParentAnchors",
+              "sourcePort": "lineIds"
+            },
+            "iterationParam": "parentAnchor",
+            "nodes": ["SearchChildAnchors", "CollectChildValues"],
+            "childZones": [
+              {
+                "id": "childZone",
+                "collectionSource": {
+                  "sourceAcId": "SearchChildAnchors",
+                  "sourcePort": "lineIds"
+                },
+                "iterationParam": "childAnchor",
+                "nodes": ["SearchChildVarLine", "FirstChildLine", "RetrieveChildValueCol", "FirstChildValue"],
+                "outputNodeId": "FirstChildValue",
+                "outputPort": "row",
+                "outputCollection": "childValues"
+              }
+            ],
+            "outputNodeId": "CollectChildValues",
+            "outputPort": "values",
+            "outputCollection": "innerValues"
+          }
+        ],
+        "outputNodeId": "FlattenInnerValues",
+        "outputPort": "values",
+        "outputCollection": "allValues"
+      }
+    ],
+    "outputs": {
+      "values": "FlattenAllValues.values"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-SearchParentLines",
+        "when": { "type": "SearchParentLines.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "$zone:outerZone.input", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RetrieveParentIdCol",
+        "when": { "type": "RetrieveParentIdCol.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstParentId.rows", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstParentId",
+        "when": { "type": "FirstParentId.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "SearchParentAnchors.lineId", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SearchParentAnchors",
+        "when": { "type": "SearchParentAnchors.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "$zone:innerZone.input", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SearchChildAnchors",
+        "when": { "type": "SearchChildAnchors.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "$zone:childZone.input", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SearchChildVarLine",
+        "when": { "type": "SearchChildVarLine.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstChildLine.rows", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstChildLine",
+        "when": { "type": "FirstChildLine.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RetrieveChildValueCol.lineId", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RetrieveChildValueCol",
+        "when": { "type": "RetrieveChildValueCol.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstChildValue.rows", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstChildValue",
+        "when": { "type": "FirstChildValue.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-$zone:childZone",
+        "when": { "type": "$zone:childZone.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "CollectChildValues.values", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-CollectChildValues",
+        "when": { "type": "CollectChildValues.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-$zone:innerZone",
+        "when": { "type": "$zone:innerZone.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FlattenInnerValues.nested", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FlattenInnerValues",
+        "when": { "type": "FlattenInnerValues.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-$zone:outerZone",
+        "when": { "type": "$zone:outerZone.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FlattenAllValues.nested", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FlattenAllValues",
+        "when": { "type": "FlattenAllValues.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "GetAnchorsWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.35 },
+    "nodes": [
+      {
+        "id": "node-start",
+        "type": "ewoStart",
+        "position": { "x": 50, "y": 320 },
+        "data": {
+          "inputs": [
+            { "name": "arg1", "type": "string" },
+            { "name": "arg2", "type": "string" },
+            { "name": "arg3", "type": "string" },
+            { "name": "arg4", "type": "string" }
+          ]
+        }
+      },
+      {
+        "id": "node-SearchParentLines",
+        "type": "ewoAc",
+        "position": { "x": 320, "y": 320 },
+        "data": {
+          "label": "SearchParentLines",
+          "operation": "SearchLineAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "tableType", "type": "number" },
+            { "name": "key", "type": "string" },
+            { "name": "value", "type": "string" }
+          ],
+          "outputs": [{ "name": "lineIds", "type": "string[]" }]
+        }
+      },
+
+      {
+        "id": "region-outerZone",
+        "type": "ewoForEachRegion",
+        "position": { "x": 600, "y": 30 },
+        "style": { "width": "1700px", "height": "650px" },
+        "data": {
+          "label": "OuterZone (parentLines iterate)",
+          "zoneId": "outerZone",
+          "iterationParam": "parentLine",
+          "outputCollection": "allValues"
+        }
+      },
+      {
+        "id": "node-RetrieveParentIdCol",
+        "type": "ewoAc",
+        "position": { "x": 40, "y": 60 },
+        "parentNode": "region-outerZone",
+        "extent": "parent",
+        "data": {
+          "label": "RetrieveParentIdCol",
+          "operation": "RetrieveColumnAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "tableType", "type": "number" },
+            { "name": "lineId", "type": "string" },
+            { "name": "column", "type": "string" }
+          ],
+          "outputs": [{ "name": "columns", "type": "any[]" }]
+        }
+      },
+      {
+        "id": "node-FirstParentId",
+        "type": "ewoAc",
+        "position": { "x": 300, "y": 60 },
+        "parentNode": "region-outerZone",
+        "extent": "parent",
+        "data": {
+          "label": "FirstParentId",
+          "operation": "FirstRowAC",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": [{ "name": "row", "type": "any" }]
+        }
+      },
+      {
+        "id": "node-SearchParentAnchors",
+        "type": "ewoAc",
+        "position": { "x": 520, "y": 60 },
+        "parentNode": "region-outerZone",
+        "extent": "parent",
+        "data": {
+          "label": "SearchParentAnchors",
+          "operation": "SearchLineAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "tableType", "type": "number" },
+            { "name": "lineId", "type": "string" },
+            { "name": "nCat", "type": "string" },
+            { "name": "uCat", "type": "string" }
+          ],
+          "outputs": [{ "name": "lineIds", "type": "string[]" }]
+        }
+      },
+
+      {
+        "id": "region-innerZone",
+        "type": "ewoForEachRegion",
+        "position": { "x": 40, "y": 200 },
+        "parentNode": "region-outerZone",
+        "extent": "parent",
+        "style": { "width": "1300px", "height": "400px" },
+        "data": {
+          "label": "InnerZone (parentAnchors iterate)",
+          "zoneId": "innerZone",
+          "iterationParam": "parentAnchor",
+          "outputCollection": "innerValues"
+        }
+      },
+      {
+        "id": "node-SearchChildAnchors",
+        "type": "ewoAc",
+        "position": { "x": 40, "y": 70 },
+        "parentNode": "region-innerZone",
+        "extent": "parent",
+        "data": {
+          "label": "SearchChildAnchors",
+          "operation": "SearchLineAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "tableType", "type": "number" },
+            { "name": "parentId", "type": "string" },
+            { "name": "nCat", "type": "string" },
+            { "name": "uCat", "type": "string" }
+          ],
+          "outputs": [{ "name": "lineIds", "type": "string[]" }]
+        }
+      },
+
+      {
+        "id": "region-childZone",
+        "type": "ewoForEachRegion",
+        "position": { "x": 280, "y": 40 },
+        "parentNode": "region-innerZone",
+        "extent": "parent",
+        "style": { "width": "850px", "height": "280px" },
+        "data": {
+          "label": "ChildZone (childAnchors iterate)",
+          "zoneId": "childZone",
+          "iterationParam": "childAnchor",
+          "outputCollection": "childValues"
+        }
+      },
+      {
+        "id": "node-SearchChildVarLine",
+        "type": "ewoAc",
+        "position": { "x": 30, "y": 80 },
+        "parentNode": "region-childZone",
+        "extent": "parent",
+        "data": {
+          "label": "SearchChildVarLine",
+          "operation": "SearchLineAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "tableType", "type": "number" },
+            { "name": "parentId", "type": "string" },
+            { "name": "nCat", "type": "string" },
+            { "name": "key", "type": "string" }
+          ],
+          "outputs": [{ "name": "lineIds", "type": "string[]" }]
+        }
+      },
+      {
+        "id": "node-FirstChildLine",
+        "type": "ewoAc",
+        "position": { "x": 220, "y": 80 },
+        "parentNode": "region-childZone",
+        "extent": "parent",
+        "data": {
+          "label": "FirstChildLine",
+          "operation": "FirstRowAC",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": [{ "name": "row", "type": "any" }]
+        }
+      },
+      {
+        "id": "node-RetrieveChildValueCol",
+        "type": "ewoAc",
+        "position": { "x": 410, "y": 80 },
+        "parentNode": "region-childZone",
+        "extent": "parent",
+        "data": {
+          "label": "RetrieveChildValueCol",
+          "operation": "RetrieveColumnAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "tableType", "type": "number" },
+            { "name": "lineId", "type": "string" },
+            { "name": "column", "type": "string" }
+          ],
+          "outputs": [{ "name": "columns", "type": "any[]" }]
+        }
+      },
+      {
+        "id": "node-FirstChildValue",
+        "type": "ewoAc",
+        "position": { "x": 640, "y": 80 },
+        "parentNode": "region-childZone",
+        "extent": "parent",
+        "data": {
+          "label": "FirstChildValue",
+          "operation": "FirstRowAC",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": [{ "name": "row", "type": "any" }]
+        }
+      },
+
+      {
+        "id": "node-CollectChildValues",
+        "type": "ewoAc",
+        "position": { "x": 1150, "y": 130 },
+        "parentNode": "region-innerZone",
+        "extent": "parent",
+        "data": {
+          "label": "CollectChildValues",
+          "operation": "CollectValuesAC",
+          "inputs": [{ "name": "values", "type": "any[]" }],
+          "outputs": [{ "name": "values", "type": "any[]" }]
+        }
+      },
+
+      {
+        "id": "node-FlattenInnerValues",
+        "type": "ewoAc",
+        "position": { "x": 1400, "y": 300 },
+        "parentNode": "region-outerZone",
+        "extent": "parent",
+        "data": {
+          "label": "FlattenInnerValues",
+          "operation": "FlattenArrayAC",
+          "inputs": [{ "name": "nested", "type": "any[][]" }],
+          "outputs": [{ "name": "values", "type": "any[]" }]
+        }
+      },
+
+      {
+        "id": "node-FlattenAllValues",
+        "type": "ewoAc",
+        "position": { "x": 2400, "y": 320 },
+        "data": {
+          "label": "FlattenAllValues",
+          "operation": "FlattenArrayAC",
+          "inputs": [{ "name": "nested", "type": "any[][]" }],
+          "outputs": [{ "name": "values", "type": "any[]" }]
+        }
+      },
+      {
+        "id": "node-end",
+        "type": "ewoEnd",
+        "position": { "x": 2680, "y": 340 },
+        "data": {
+          "outputs": [{ "name": "values", "type": "any[]" }]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-searchParent", "source": "node-start", "target": "node-SearchParentLines", "sourceHandle": "output-arg1", "targetHandle": "input-tableId" },
+      { "id": "e-start-searchParent-val", "source": "node-start", "target": "node-SearchParentLines", "sourceHandle": "output-arg2", "targetHandle": "input-value" },
+      { "id": "e-searchParent-outerZone", "source": "node-SearchParentLines", "target": "region-outerZone", "sourceHandle": "output-lineIds", "targetHandle": "input-collection" },
+
+      { "id": "e-outerZone-retrieve", "source": "region-outerZone", "target": "node-RetrieveParentIdCol", "sourceHandle": "iter-out", "targetHandle": "input-lineId" },
+      { "id": "e-start-retrieve-tid", "source": "node-start", "target": "node-RetrieveParentIdCol", "sourceHandle": "output-arg1", "targetHandle": "input-tableId" },
+      { "id": "e-retrieve-firstParent", "source": "node-RetrieveParentIdCol", "target": "node-FirstParentId", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+      { "id": "e-firstParent-searchAnchors", "source": "node-FirstParentId", "target": "node-SearchParentAnchors", "sourceHandle": "output-row", "targetHandle": "input-lineId" },
+      { "id": "e-start-searchAnchors-tid", "source": "node-start", "target": "node-SearchParentAnchors", "sourceHandle": "output-arg1", "targetHandle": "input-tableId" },
+      { "id": "e-start-searchAnchors-ucat", "source": "node-start", "target": "node-SearchParentAnchors", "sourceHandle": "output-arg3", "targetHandle": "input-uCat" },
+
+      { "id": "e-searchAnchors-innerZone", "source": "node-SearchParentAnchors", "target": "region-innerZone", "sourceHandle": "output-lineIds", "targetHandle": "input-collection" },
+      { "id": "e-innerZone-searchChild", "source": "region-innerZone", "target": "node-SearchChildAnchors", "sourceHandle": "iter-out", "targetHandle": "input-parentId" },
+      { "id": "e-start-searchChild-tid", "source": "node-start", "target": "node-SearchChildAnchors", "sourceHandle": "output-arg1", "targetHandle": "input-tableId" },
+      { "id": "e-start-searchChild-ucat", "source": "node-start", "target": "node-SearchChildAnchors", "sourceHandle": "output-arg4", "targetHandle": "input-uCat" },
+
+      { "id": "e-searchChild-childZone", "source": "node-SearchChildAnchors", "target": "region-childZone", "sourceHandle": "output-lineIds", "targetHandle": "input-collection" },
+      { "id": "e-childZone-searchVarLine", "source": "region-childZone", "target": "node-SearchChildVarLine", "sourceHandle": "iter-out", "targetHandle": "input-parentId" },
+      { "id": "e-start-searchVarLine-tid", "source": "node-start", "target": "node-SearchChildVarLine", "sourceHandle": "output-arg1", "targetHandle": "input-tableId" },
+      { "id": "e-searchVarLine-firstChild", "source": "node-SearchChildVarLine", "target": "node-FirstChildLine", "sourceHandle": "output-lineIds", "targetHandle": "input-rows" },
+      { "id": "e-firstChild-retrieveVal", "source": "node-FirstChildLine", "target": "node-RetrieveChildValueCol", "sourceHandle": "output-row", "targetHandle": "input-lineId" },
+      { "id": "e-start-retrieveVal-tid", "source": "node-start", "target": "node-RetrieveChildValueCol", "sourceHandle": "output-arg1", "targetHandle": "input-tableId" },
+      { "id": "e-retrieveVal-firstValue", "source": "node-RetrieveChildValueCol", "target": "node-FirstChildValue", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+      { "id": "e-firstValue-collect-child", "source": "node-FirstChildValue", "target": "region-childZone", "sourceHandle": "output-row", "targetHandle": "collect-in" },
+
+      { "id": "e-childZone-collectChild", "source": "region-childZone", "target": "node-CollectChildValues", "sourceHandle": "output-results", "targetHandle": "input-values" },
+      { "id": "e-collectChild-collect-inner", "source": "node-CollectChildValues", "target": "region-innerZone", "sourceHandle": "output-values", "targetHandle": "collect-in" },
+
+      { "id": "e-innerZone-flattenInner", "source": "region-innerZone", "target": "node-FlattenInnerValues", "sourceHandle": "output-results", "targetHandle": "input-nested" },
+      { "id": "e-flattenInner-collect-outer", "source": "node-FlattenInnerValues", "target": "region-outerZone", "sourceHandle": "output-values", "targetHandle": "collect-in" },
+
+      { "id": "e-outerZone-flattenAll", "source": "region-outerZone", "target": "node-FlattenAllValues", "sourceHandle": "output-results", "targetHandle": "input-nested" },
+      { "id": "e-flattenAll-end", "source": "node-FlattenAllValues", "target": "node-end", "sourceHandle": "output-values", "targetHandle": "input-values" }
+    ]
+  }
+}

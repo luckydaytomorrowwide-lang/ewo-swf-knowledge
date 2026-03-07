@@ -1,0 +1,365 @@
+{
+  "id": "ConstructLayoutTreeWF",
+  "version": "1.0.0",
+  "name": "ConstructLayoutTreeWF",
+  "description": "行をイテレートしてレイアウトツリーを構築する。ForEach row: GetNodeTable→DeployBlock→(guarded)BuildBlockKey/BuildBlockRow→BuildLayoutBlock→全layoutRowsを平坦化。",
+  "inputs": {
+    "blockKey": { "schema": "string" },
+    "rows": { "schema": "any[]" },
+    "anchorKey": { "schema": "string" },
+    "lineKey": { "schema": "string" },
+    "column": { "schema": "string" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "PrepareRows",
+        "operation": "PassthroughAC",
+        "deps": {
+          "rows": { "sourceAcId": "$input", "sourcePort": "rows" }
+        },
+        "outputs": { "rows": {} }
+      },
+
+      {
+        "id": "GetNodeTable",
+        "operation": "GetNodeTableWF",
+        "deps": {
+          "nodeId": { "sourceAcId": "$zoneInput", "sourcePort": "rowItem" }
+        },
+        "outputs": { "firstBlockId": {}, "tableId": {} },
+        "wfCall": { "callee": "GetNodeTableWF", "boundary": true }
+      },
+      {
+        "id": "DeployBlock",
+        "operation": "DeployBlockWF",
+        "deps": {
+          "tableId": { "sourceAcId": "GetNodeTable", "sourcePort": "tableId" },
+          "lineId": { "sourceAcId": "GetNodeTable", "sourcePort": "firstBlockId" },
+          "depth": { "literal": 10 },
+          "type": { "literal": "default" }
+        },
+        "outputs": { "tempTableId": {} },
+        "wfCall": { "callee": "DeployBlockWF", "boundary": true }
+      },
+      {
+        "id": "BuildBlockKey",
+        "operation": "BuildLayoutBlockKeyWF",
+        "guard": "$input.anchorKey == null",
+        "deps": {
+          "parentKey": { "sourceAcId": "$input", "sourcePort": "blockKey" },
+          "blockKey": { "sourceAcId": "GetNodeTable", "sourcePort": "firstBlockId" }
+        },
+        "outputs": { "blockKey": {} },
+        "wfCall": { "callee": "BuildLayoutBlockKeyWF", "boundary": true }
+      },
+      {
+        "id": "BuildBlockRow",
+        "operation": "BuildLayoutBlockRowWF",
+        "guard": "$input.anchorKey == null",
+        "deps": {
+          "tableId": { "sourceAcId": "DeployBlock", "sourcePort": "tempTableId" },
+          "lineId": { "sourceAcId": "GetNodeTable", "sourcePort": "firstBlockId" },
+          "blockKey": { "sourceAcId": "BuildBlockKey", "sourcePort": "blockKey" },
+          "instViewType": { "literal": "card" },
+          "instEditType": { "literal": "card" },
+          "tplViewType": { "literal": "card" },
+          "tplEditType": { "literal": "card" }
+        },
+        "outputs": { "layoutRow": {} },
+        "wfCall": { "callee": "BuildLayoutBlockRowWF", "boundary": true }
+      },
+      {
+        "id": "BuildLayoutBlock",
+        "operation": "BuildLayoutBlockWF",
+        "deps": {
+          "tableId": { "sourceAcId": "DeployBlock", "sourcePort": "tempTableId" },
+          "blockKey": { "sourceAcId": "BuildBlockKey", "sourcePort": "blockKey" },
+          "anchorId": { "sourceAcId": "GetNodeTable", "sourcePort": "firstBlockId" },
+          "anchorKey": { "sourceAcId": "$input", "sourcePort": "anchorKey" },
+          "lineKey": { "sourceAcId": "$input", "sourcePort": "lineKey" },
+          "column": { "sourceAcId": "$input", "sourcePort": "column" }
+        },
+        "outputs": { "layoutRows": {} },
+        "wfCall": { "callee": "BuildLayoutBlockWF", "boundary": true }
+      },
+
+      {
+        "id": "FlattenResults",
+        "operation": "FlattenArrayAC",
+        "deps": {
+          "arrays": { "sourceAcId": "$zone:rowZone", "sourcePort": "allLayoutRows" }
+        },
+        "outputs": { "layoutRows": {} }
+      }
+    ],
+    "forEachZones": [
+      {
+        "id": "rowZone",
+        "collectionSource": {
+          "sourceAcId": "PrepareRows",
+          "sourcePort": "rows"
+        },
+        "iterationParam": "rowItem",
+        "nodes": ["GetNodeTable", "DeployBlock", "BuildBlockKey", "BuildBlockRow", "BuildLayoutBlock"],
+        "outputNodeId": "BuildLayoutBlock",
+        "outputPort": "layoutRows",
+        "outputCollection": "allLayoutRows"
+      }
+    ],
+    "outputs": {
+      "layoutRows": "FlattenResults.layoutRows"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-PrepareRows",
+        "when": { "type": "PrepareRows.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "$zone:rowZone.input", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-GetNodeTable",
+        "when": { "type": "GetNodeTable.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "DeployBlock.tableId", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" },
+          { "type": "DeployBlock.lineId", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" },
+          { "type": "BuildBlockKey.blockKey", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" },
+          { "type": "BuildBlockRow.lineId", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" },
+          { "type": "BuildLayoutBlock.anchorId", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-DeployBlock",
+        "when": { "type": "DeployBlock.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "BuildBlockRow.tableId", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" },
+          { "type": "BuildLayoutBlock.tableId", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-BuildBlockKey",
+        "when": { "type": "BuildBlockKey.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "BuildBlockRow.blockKey", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" },
+          { "type": "BuildLayoutBlock.blockKey", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-BuildBlockRow",
+        "when": { "type": "BuildBlockRow.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-BuildLayoutBlock",
+        "when": { "type": "BuildLayoutBlock.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-$zone:rowZone",
+        "when": { "type": "$zone:rowZone.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FlattenResults.arrays", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FlattenResults",
+        "when": { "type": "FlattenResults.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "ConstructLayoutTreeWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.55 },
+    "nodes": [
+      {
+        "id": "node-start",
+        "type": "ewoStart",
+        "position": { "x": 50, "y": 300 },
+        "data": {
+          "inputs": [
+            { "name": "blockKey", "type": "string" },
+            { "name": "rows", "type": "any[]" },
+            { "name": "anchorKey", "type": "string" },
+            { "name": "lineKey", "type": "string" },
+            { "name": "column", "type": "string" }
+          ]
+        }
+      },
+      {
+        "id": "node-PrepareRows",
+        "type": "ewoAc",
+        "position": { "x": 300, "y": 300 },
+        "data": {
+          "label": "PrepareRows",
+          "operation": "PassthroughAC",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": [{ "name": "rows", "type": "any[]" }]
+        }
+      },
+
+      {
+        "id": "region-rowZone",
+        "type": "ewoForEachRegion",
+        "position": { "x": 550, "y": 50 },
+        "style": { "width": "1300px", "height": "550px" },
+        "data": {
+          "label": "RowZone (rows iterate)",
+          "zoneId": "rowZone",
+          "iterationParam": "rowItem",
+          "outputCollection": "allLayoutRows"
+        }
+      },
+      {
+        "id": "node-GetNodeTable",
+        "type": "ewoWfCall",
+        "position": { "x": 40, "y": 80 },
+        "parentNode": "region-rowZone",
+        "extent": "parent",
+        "data": {
+          "label": "GetNodeTable",
+          "operation": "GetNodeTableWF",
+          "inputs": [{ "name": "nodeId", "type": "string" }],
+          "outputs": [{ "name": "firstBlockId", "type": "string" }, { "name": "tableId", "type": "string" }],
+          "wfCall": { "callee": "GetNodeTableWF", "boundary": true }
+        }
+      },
+      {
+        "id": "node-DeployBlock",
+        "type": "ewoWfCall",
+        "position": { "x": 310, "y": 80 },
+        "parentNode": "region-rowZone",
+        "extent": "parent",
+        "data": {
+          "label": "DeployBlock",
+          "operation": "DeployBlockWF",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "depth", "type": "number" },
+            { "name": "type", "type": "string" }
+          ],
+          "outputs": [{ "name": "tempTableId", "type": "string" }],
+          "wfCall": { "callee": "DeployBlockWF", "boundary": true }
+        }
+      },
+      {
+        "id": "node-BuildBlockKey",
+        "type": "ewoWfCall",
+        "position": { "x": 580, "y": 80 },
+        "parentNode": "region-rowZone",
+        "extent": "parent",
+        "data": {
+          "label": "BuildBlockKey",
+          "operation": "BuildLayoutBlockKeyWF",
+          "guard": "$input.anchorKey == null",
+          "inputs": [
+            { "name": "parentKey", "type": "string" },
+            { "name": "blockKey", "type": "string" }
+          ],
+          "outputs": [{ "name": "blockKey", "type": "string" }],
+          "wfCall": { "callee": "BuildLayoutBlockKeyWF", "boundary": true }
+        }
+      },
+      {
+        "id": "node-BuildBlockRow",
+        "type": "ewoWfCall",
+        "position": { "x": 580, "y": 300 },
+        "parentNode": "region-rowZone",
+        "extent": "parent",
+        "data": {
+          "label": "BuildBlockRow",
+          "operation": "BuildLayoutBlockRowWF",
+          "guard": "$input.anchorKey == null",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "blockKey", "type": "string" }
+          ],
+          "outputs": [{ "name": "layoutRow", "type": "object" }],
+          "wfCall": { "callee": "BuildLayoutBlockRowWF", "boundary": true }
+        }
+      },
+      {
+        "id": "node-BuildLayoutBlock",
+        "type": "ewoWfCall",
+        "position": { "x": 900, "y": 180 },
+        "parentNode": "region-rowZone",
+        "extent": "parent",
+        "data": {
+          "label": "BuildLayoutBlock",
+          "operation": "BuildLayoutBlockWF",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "blockKey", "type": "string" },
+            { "name": "anchorId", "type": "string" },
+            { "name": "anchorKey", "type": "string" },
+            { "name": "lineKey", "type": "string" },
+            { "name": "column", "type": "string" }
+          ],
+          "outputs": [{ "name": "layoutRows", "type": "object[]" }],
+          "wfCall": { "callee": "BuildLayoutBlockWF", "boundary": true }
+        }
+      },
+
+      {
+        "id": "node-FlattenResults",
+        "type": "ewoAc",
+        "position": { "x": 1950, "y": 300 },
+        "data": {
+          "label": "FlattenResults",
+          "operation": "FlattenArrayAC",
+          "inputs": [{ "name": "arrays", "type": "object[][]" }],
+          "outputs": [{ "name": "layoutRows", "type": "object[]" }]
+        }
+      },
+      {
+        "id": "node-end",
+        "type": "ewoEnd",
+        "position": { "x": 2200, "y": 300 },
+        "data": {
+          "outputs": [{ "name": "layoutRows", "type": "object[]" }]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-prepare", "source": "node-start", "target": "node-PrepareRows", "sourceHandle": "output-rows", "targetHandle": "input-rows" },
+      { "id": "e-prepare-rowZone", "source": "node-PrepareRows", "target": "region-rowZone", "sourceHandle": "output-rows", "targetHandle": "input-collection" },
+
+      { "id": "e-rowZone-getNode", "source": "region-rowZone", "target": "node-GetNodeTable", "sourceHandle": "iter-out", "targetHandle": "input-nodeId" },
+      { "id": "e-getNode-deploy-tid", "source": "node-GetNodeTable", "target": "node-DeployBlock", "sourceHandle": "output-tableId", "targetHandle": "input-tableId" },
+      { "id": "e-getNode-deploy-lid", "source": "node-GetNodeTable", "target": "node-DeployBlock", "sourceHandle": "output-firstBlockId", "targetHandle": "input-lineId" },
+
+      { "id": "e-start-buildKey-pk", "source": "node-start", "target": "node-BuildBlockKey", "sourceHandle": "output-blockKey", "targetHandle": "input-parentKey" },
+      { "id": "e-getNode-buildKey-bk", "source": "node-GetNodeTable", "target": "node-BuildBlockKey", "sourceHandle": "output-firstBlockId", "targetHandle": "input-blockKey" },
+
+      { "id": "e-deploy-buildRow-tid", "source": "node-DeployBlock", "target": "node-BuildBlockRow", "sourceHandle": "output-tempTableId", "targetHandle": "input-tableId" },
+      { "id": "e-getNode-buildRow-lid", "source": "node-GetNodeTable", "target": "node-BuildBlockRow", "sourceHandle": "output-firstBlockId", "targetHandle": "input-lineId" },
+      { "id": "e-buildKey-buildRow-bk", "source": "node-BuildBlockKey", "target": "node-BuildBlockRow", "sourceHandle": "output-blockKey", "targetHandle": "input-blockKey" },
+
+      { "id": "e-deploy-buildBlock-tid", "source": "node-DeployBlock", "target": "node-BuildLayoutBlock", "sourceHandle": "output-tempTableId", "targetHandle": "input-tableId" },
+      { "id": "e-buildKey-buildBlock-bk", "source": "node-BuildBlockKey", "target": "node-BuildLayoutBlock", "sourceHandle": "output-blockKey", "targetHandle": "input-blockKey" },
+      { "id": "e-getNode-buildBlock-aid", "source": "node-GetNodeTable", "target": "node-BuildLayoutBlock", "sourceHandle": "output-firstBlockId", "targetHandle": "input-anchorId" },
+      { "id": "e-start-buildBlock-ak", "source": "node-start", "target": "node-BuildLayoutBlock", "sourceHandle": "output-anchorKey", "targetHandle": "input-anchorKey" },
+      { "id": "e-start-buildBlock-lk", "source": "node-start", "target": "node-BuildLayoutBlock", "sourceHandle": "output-lineKey", "targetHandle": "input-lineKey" },
+      { "id": "e-start-buildBlock-col", "source": "node-start", "target": "node-BuildLayoutBlock", "sourceHandle": "output-column", "targetHandle": "input-column" },
+
+      { "id": "e-buildBlock-collect", "source": "node-BuildLayoutBlock", "target": "region-rowZone", "sourceHandle": "output-layoutRows", "targetHandle": "collect-in" },
+      { "id": "e-rowZone-flatten", "source": "region-rowZone", "target": "node-FlattenResults", "sourceHandle": "output-results", "targetHandle": "input-arrays" },
+      { "id": "e-flatten-end", "source": "node-FlattenResults", "target": "node-end", "sourceHandle": "output-layoutRows", "targetHandle": "input-layoutRows" }
+    ]
+  }
+}

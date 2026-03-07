@@ -1,0 +1,396 @@
+{
+  "id": "GetButtonWF",
+  "version": "1.0.0",
+  "name": "GetButtonWF",
+  "description": "ボタンのlabelとjointIdを取得する。指定tableId/lineId配下のbuttonアンカーを検索し、labelとjointIdを並列に取得して返す。",
+  "inputs": {
+    "arg1": { "schema": "string" },
+    "arg2": { "schema": "string" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "SearchButtonAnchors",
+        "operation": "SearchLineAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "uCat": { "literal": "button" },
+          "parentId": { "sourceAcId": "$input", "sourcePort": "arg2" }
+        },
+        "outputs": { "lineIds": {} }
+      },
+      {
+        "id": "FirstButtonAnchor",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "SearchButtonAnchors", "sourcePort": "lineIds" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "SearchLabelLines",
+        "operation": "SearchLineAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "key": { "literal": "label" },
+          "parentId": { "sourceAcId": "FirstButtonAnchor", "sourcePort": "row" }
+        },
+        "outputs": { "lineIds": {} }
+      },
+      {
+        "id": "FirstLabelLine",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "SearchLabelLines", "sourcePort": "lineIds" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "RetrieveLabelCol",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "lineId": { "sourceAcId": "FirstLabelLine", "sourcePort": "row" },
+          "column": { "literal": "value" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstLabelValue",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveLabelCol", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "SearchJointLines",
+        "operation": "SearchLineAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "key": { "literal": "jointId" },
+          "parentId": { "sourceAcId": "FirstButtonAnchor", "sourcePort": "row" }
+        },
+        "outputs": { "lineIds": {} }
+      },
+      {
+        "id": "FirstJointLine",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "SearchJointLines", "sourcePort": "lineIds" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "RetrieveJointCol",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "lineId": { "sourceAcId": "FirstJointLine", "sourcePort": "row" },
+          "column": { "literal": "value" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstJointValue",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveJointCol", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      }
+    ],
+    "outputs": {
+      "text": "FirstLabelValue.row",
+      "jointId": "FirstJointValue.row"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-SearchButtonAnchors",
+        "when": { "type": "SearchButtonAnchors.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstButtonAnchor.rows", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstButtonAnchor",
+        "when": { "type": "FirstButtonAnchor.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "SearchLabelLines.parentId", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" },
+          { "type": "SearchJointLines.parentId", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SearchLabelLines",
+        "when": { "type": "SearchLabelLines.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstLabelLine.rows", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstLabelLine",
+        "when": { "type": "FirstLabelLine.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RetrieveLabelCol.lineId", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RetrieveLabelCol",
+        "when": { "type": "RetrieveLabelCol.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstLabelValue.rows", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstLabelValue",
+        "when": { "type": "FirstLabelValue.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SearchJointLines",
+        "when": { "type": "SearchJointLines.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstJointLine.rows", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstJointLine",
+        "when": { "type": "FirstJointLine.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RetrieveJointCol.lineId", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RetrieveJointCol",
+        "when": { "type": "RetrieveJointCol.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstJointValue.rows", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstJointValue",
+        "when": { "type": "FirstJointValue.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "GetButtonWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.6 },
+    "nodes": [
+      {
+        "id": "node-start",
+        "type": "ewoStart",
+        "position": { "x": 50, "y": 250 },
+        "data": {
+          "inputs": [
+            { "name": "arg1", "type": "string" },
+            { "name": "arg2", "type": "string" }
+          ]
+        }
+      },
+      {
+        "id": "node-SearchButtonAnchors",
+        "type": "ewoAc",
+        "position": { "x": 310, "y": 250 },
+        "data": {
+          "label": "SearchButtonAnchors",
+          "operation": "SearchLineAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "uCat", "type": "string" },
+            { "name": "parentId", "type": "string" }
+          ],
+          "outputs": [
+            { "name": "lineIds", "type": "string[]" }
+          ]
+        }
+      },
+      {
+        "id": "node-FirstButtonAnchor",
+        "type": "ewoAc",
+        "position": { "x": 570, "y": 250 },
+        "data": {
+          "label": "FirstButtonAnchor",
+          "operation": "FirstRowAC",
+          "inputs": [
+            { "name": "rows", "type": "string[]" }
+          ],
+          "outputs": [
+            { "name": "row", "type": "string" }
+          ]
+        }
+      },
+      {
+        "id": "node-SearchLabelLines",
+        "type": "ewoAc",
+        "position": { "x": 830, "y": 120 },
+        "data": {
+          "label": "SearchLabelLines",
+          "operation": "SearchLineAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "key", "type": "string" },
+            { "name": "parentId", "type": "string" }
+          ],
+          "outputs": [
+            { "name": "lineIds", "type": "string[]" }
+          ]
+        }
+      },
+      {
+        "id": "node-FirstLabelLine",
+        "type": "ewoAc",
+        "position": { "x": 1090, "y": 120 },
+        "data": {
+          "label": "FirstLabelLine",
+          "operation": "FirstRowAC",
+          "inputs": [
+            { "name": "rows", "type": "string[]" }
+          ],
+          "outputs": [
+            { "name": "row", "type": "string" }
+          ]
+        }
+      },
+      {
+        "id": "node-RetrieveLabelCol",
+        "type": "ewoAc",
+        "position": { "x": 1350, "y": 120 },
+        "data": {
+          "label": "RetrieveLabelCol",
+          "operation": "RetrieveColumnAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "column", "type": "string" }
+          ],
+          "outputs": [
+            { "name": "columns", "type": "any[]" }
+          ]
+        }
+      },
+      {
+        "id": "node-FirstLabelValue",
+        "type": "ewoAc",
+        "position": { "x": 1610, "y": 120 },
+        "data": {
+          "label": "FirstLabelValue",
+          "operation": "FirstRowAC",
+          "inputs": [
+            { "name": "rows", "type": "any[]" }
+          ],
+          "outputs": [
+            { "name": "row", "type": "any" }
+          ]
+        }
+      },
+      {
+        "id": "node-SearchJointLines",
+        "type": "ewoAc",
+        "position": { "x": 830, "y": 380 },
+        "data": {
+          "label": "SearchJointLines",
+          "operation": "SearchLineAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "key", "type": "string" },
+            { "name": "parentId", "type": "string" }
+          ],
+          "outputs": [
+            { "name": "lineIds", "type": "string[]" }
+          ]
+        }
+      },
+      {
+        "id": "node-FirstJointLine",
+        "type": "ewoAc",
+        "position": { "x": 1090, "y": 380 },
+        "data": {
+          "label": "FirstJointLine",
+          "operation": "FirstRowAC",
+          "inputs": [
+            { "name": "rows", "type": "string[]" }
+          ],
+          "outputs": [
+            { "name": "row", "type": "string" }
+          ]
+        }
+      },
+      {
+        "id": "node-RetrieveJointCol",
+        "type": "ewoAc",
+        "position": { "x": 1350, "y": 380 },
+        "data": {
+          "label": "RetrieveJointCol",
+          "operation": "RetrieveColumnAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "column", "type": "string" }
+          ],
+          "outputs": [
+            { "name": "columns", "type": "any[]" }
+          ]
+        }
+      },
+      {
+        "id": "node-FirstJointValue",
+        "type": "ewoAc",
+        "position": { "x": 1610, "y": 380 },
+        "data": {
+          "label": "FirstJointValue",
+          "operation": "FirstRowAC",
+          "inputs": [
+            { "name": "rows", "type": "any[]" }
+          ],
+          "outputs": [
+            { "name": "row", "type": "any" }
+          ]
+        }
+      },
+      {
+        "id": "node-end",
+        "type": "ewoEnd",
+        "position": { "x": 1870, "y": 250 },
+        "data": {
+          "outputs": [
+            { "name": "text", "type": "any" },
+            { "name": "jointId", "type": "any" }
+          ]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-SBA", "source": "node-start", "target": "node-SearchButtonAnchors", "sourceHandle": "output-arg1", "targetHandle": "input-tableId" },
+      { "id": "e-start-SBA-parentId", "source": "node-start", "target": "node-SearchButtonAnchors", "sourceHandle": "output-arg2", "targetHandle": "input-parentId" },
+      { "id": "e-SBA-FBA", "source": "node-SearchButtonAnchors", "target": "node-FirstButtonAnchor", "sourceHandle": "output-lineIds", "targetHandle": "input-rows" },
+      { "id": "e-FBA-SLL", "source": "node-FirstButtonAnchor", "target": "node-SearchLabelLines", "sourceHandle": "output-row", "targetHandle": "input-parentId" },
+      { "id": "e-SLL-FLL", "source": "node-SearchLabelLines", "target": "node-FirstLabelLine", "sourceHandle": "output-lineIds", "targetHandle": "input-rows" },
+      { "id": "e-FLL-RLC", "source": "node-FirstLabelLine", "target": "node-RetrieveLabelCol", "sourceHandle": "output-row", "targetHandle": "input-lineId" },
+      { "id": "e-RLC-FLV", "source": "node-RetrieveLabelCol", "target": "node-FirstLabelValue", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+      { "id": "e-FLV-end", "source": "node-FirstLabelValue", "target": "node-end", "sourceHandle": "output-row", "targetHandle": "input-text" },
+      { "id": "e-FBA-SJL", "source": "node-FirstButtonAnchor", "target": "node-SearchJointLines", "sourceHandle": "output-row", "targetHandle": "input-parentId" },
+      { "id": "e-SJL-FJL", "source": "node-SearchJointLines", "target": "node-FirstJointLine", "sourceHandle": "output-lineIds", "targetHandle": "input-rows" },
+      { "id": "e-FJL-RJC", "source": "node-FirstJointLine", "target": "node-RetrieveJointCol", "sourceHandle": "output-row", "targetHandle": "input-lineId" },
+      { "id": "e-RJC-FJV", "source": "node-RetrieveJointCol", "target": "node-FirstJointValue", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+      { "id": "e-FJV-end", "source": "node-FirstJointValue", "target": "node-end", "sourceHandle": "output-row", "targetHandle": "input-jointId" }
+    ]
+  }
+}

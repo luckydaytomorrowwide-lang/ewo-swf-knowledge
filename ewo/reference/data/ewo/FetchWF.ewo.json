@@ -1,0 +1,284 @@
+{
+  "id": "FetchWF",
+  "version": "1.0.0",
+  "name": "FetchWF",
+  "description": "ノードをフェッチするWF。pageId配下で指定ラベルのインスタンスノードを検索し、存在すればそのnodeIdを返す。存在しなければテンプレートからインスタンスを作成し、ページにエッジ接続して返す。",
+  "inputs": {
+    "arg1": { "schema": "string" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "GetPageId",
+        "operation": "GetPageIdAC",
+        "deps": {},
+        "outputs": { "pageId": {} }
+      },
+      {
+        "id": "SearchExistingNodes",
+        "operation": "SearchNodeAC",
+        "deps": {
+          "searchType": { "literal": 2 },
+          "nodeId": { "sourceAcId": "GetPageId", "sourcePort": "pageId" },
+          "edgeType": { "literal": "TREE_CONNECT" },
+          "nodeLabelType": { "literal": "instance" },
+          "nodeLabel": { "sourceAcId": "$input", "sourcePort": "arg1" }
+        },
+        "outputs": { "nodeIds": {} }
+      },
+      {
+        "id": "FirstExistingNode",
+        "operation": "FirstRowAC",
+        "guard": "SearchExistingNodes.nodeIds.length > 0",
+        "deps": {
+          "rows": { "sourceAcId": "SearchExistingNodes", "sourcePort": "nodeIds" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "SearchTemplateNodes",
+        "operation": "SearchNodeAC",
+        "guard": "SearchExistingNodes.nodeIds.length == 0",
+        "deps": {
+          "searchType": { "literal": 3 },
+          "nodeId": { "sourceAcId": "GetPageId", "sourcePort": "pageId" },
+          "nodeLabelType": { "literal": "template" },
+          "nodeLabel": { "sourceAcId": "$input", "sourcePort": "arg1" }
+        },
+        "outputs": { "nodeIds": {} }
+      },
+      {
+        "id": "FirstTemplateNode",
+        "operation": "FirstRowAC",
+        "guard": "SearchExistingNodes.nodeIds.length == 0",
+        "deps": {
+          "rows": { "sourceAcId": "SearchTemplateNodes", "sourcePort": "nodeIds" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "CreateInstance",
+        "operation": "CreateInstanceAC",
+        "guard": "SearchExistingNodes.nodeIds.length == 0",
+        "deps": {
+          "nodeId": { "sourceAcId": "FirstTemplateNode", "sourcePort": "row" }
+        },
+        "outputs": { "nodeId": {} }
+      },
+      {
+        "id": "CreateEdge",
+        "operation": "CreateEdgeAC",
+        "guard": "SearchExistingNodes.nodeIds.length == 0",
+        "deps": {
+          "sourceNodeId": { "sourceAcId": "GetPageId", "sourcePort": "pageId" },
+          "targetNodeId": { "sourceAcId": "CreateInstance", "sourcePort": "nodeId" },
+          "edgeType": { "literal": "TREE_CONNECT" }
+        },
+        "outputs": {}
+      }
+    ],
+    "outputs": {
+      "nodeId": { "oneOf": [
+        { "sourceAcId": "FirstExistingNode", "sourcePort": "row" },
+        { "sourceAcId": "CreateInstance", "sourcePort": "nodeId" }
+      ]}
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-GetPageId",
+        "when": { "type": "GetPageId.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "SearchExistingNodes.nodeId", "wfid": "FetchWF", "map": "outputRef->payloadRef" },
+          { "type": "SearchTemplateNodes.nodeId", "wfid": "FetchWF", "map": "outputRef->payloadRef" },
+          { "type": "CreateEdge.sourceNodeId", "wfid": "FetchWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SearchExistingNodes",
+        "when": { "type": "SearchExistingNodes.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstExistingNode.rows", "wfid": "FetchWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstExistingNode",
+        "when": { "type": "FirstExistingNode.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "FetchWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SearchTemplateNodes",
+        "when": { "type": "SearchTemplateNodes.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstTemplateNode.rows", "wfid": "FetchWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstTemplateNode",
+        "when": { "type": "FirstTemplateNode.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "CreateInstance.nodeId", "wfid": "FetchWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-CreateInstance",
+        "when": { "type": "CreateInstance.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "CreateEdge.targetNodeId", "wfid": "FetchWF", "map": "outputRef->payloadRef" },
+          { "type": "wf.completed", "wfid": "FetchWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-CreateEdge",
+        "when": { "type": "CreateEdge.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.55 },
+    "nodes": [
+      {
+        "id": "node-start",
+        "type": "ewoStart",
+        "position": { "x": 50, "y": 250 },
+        "data": {
+          "inputs": [{ "name": "arg1", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-GetPageId",
+        "type": "ewoAc",
+        "position": { "x": 300, "y": 250 },
+        "data": {
+          "label": "GetPageId",
+          "operation": "GetPageIdAC",
+          "inputs": [],
+          "outputs": [{ "name": "pageId", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-SearchExistingNodes",
+        "type": "ewoAc",
+        "position": { "x": 600, "y": 250 },
+        "data": {
+          "label": "SearchExistingNodes",
+          "operation": "SearchNodeAC",
+          "inputs": [
+            { "name": "searchType", "type": "number" },
+            { "name": "nodeId", "type": "string" },
+            { "name": "edgeType", "type": "string" },
+            { "name": "nodeLabelType", "type": "string" },
+            { "name": "nodeLabel", "type": "string" }
+          ],
+          "outputs": [{ "name": "nodeIds", "type": "string[]" }]
+        }
+      },
+      {
+        "id": "node-FirstExistingNode",
+        "type": "ewoAc",
+        "position": { "x": 950, "y": 100 },
+        "data": {
+          "label": "FirstExistingNode",
+          "operation": "FirstRowAC",
+          "guard": "SearchExistingNodes.nodeIds.length > 0",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": [{ "name": "row", "type": "any" }]
+        }
+      },
+      {
+        "id": "node-SearchTemplateNodes",
+        "type": "ewoAc",
+        "position": { "x": 950, "y": 400 },
+        "data": {
+          "label": "SearchTemplateNodes",
+          "operation": "SearchNodeAC",
+          "guard": "SearchExistingNodes.nodeIds.length == 0",
+          "inputs": [
+            { "name": "searchType", "type": "number" },
+            { "name": "nodeId", "type": "string" },
+            { "name": "nodeLabelType", "type": "string" },
+            { "name": "nodeLabel", "type": "string" }
+          ],
+          "outputs": [{ "name": "nodeIds", "type": "string[]" }]
+        }
+      },
+      {
+        "id": "node-FirstTemplateNode",
+        "type": "ewoAc",
+        "position": { "x": 1250, "y": 400 },
+        "data": {
+          "label": "FirstTemplateNode",
+          "operation": "FirstRowAC",
+          "guard": "SearchExistingNodes.nodeIds.length == 0",
+          "inputs": [{ "name": "rows", "type": "any[]" }],
+          "outputs": [{ "name": "row", "type": "any" }]
+        }
+      },
+      {
+        "id": "node-CreateInstance",
+        "type": "ewoAc",
+        "position": { "x": 1550, "y": 400 },
+        "data": {
+          "label": "CreateInstance",
+          "operation": "CreateInstanceAC",
+          "guard": "SearchExistingNodes.nodeIds.length == 0",
+          "inputs": [{ "name": "nodeId", "type": "string" }],
+          "outputs": [{ "name": "nodeId", "type": "string" }]
+        }
+      },
+      {
+        "id": "node-CreateEdge",
+        "type": "ewoAc",
+        "position": { "x": 1850, "y": 500 },
+        "data": {
+          "label": "CreateEdge",
+          "operation": "CreateEdgeAC",
+          "guard": "SearchExistingNodes.nodeIds.length == 0",
+          "inputs": [
+            { "name": "sourceNodeId", "type": "string" },
+            { "name": "targetNodeId", "type": "string" },
+            { "name": "edgeType", "type": "string" }
+          ],
+          "outputs": []
+        }
+      },
+      {
+        "id": "node-end",
+        "type": "ewoEnd",
+        "position": { "x": 2100, "y": 250 },
+        "data": {
+          "outputs": [{ "name": "nodeId", "type": "any" }]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-getpageid", "source": "node-start", "target": "node-GetPageId" },
+      { "id": "e-start-searchexisting-arg1", "source": "node-start", "target": "node-SearchExistingNodes", "sourceHandle": "output-arg1", "targetHandle": "input-nodeLabel" },
+      { "id": "e-getpageid-searchexisting", "source": "node-GetPageId", "target": "node-SearchExistingNodes", "sourceHandle": "output-pageId", "targetHandle": "input-nodeId" },
+
+      { "id": "e-searchexisting-firstexisting", "source": "node-SearchExistingNodes", "target": "node-FirstExistingNode", "sourceHandle": "output-nodeIds", "targetHandle": "input-rows" },
+      { "id": "e-firstexisting-end", "source": "node-FirstExistingNode", "target": "node-end", "sourceHandle": "output-row", "targetHandle": "input-nodeId" },
+
+      { "id": "e-getpageid-searchtemplate", "source": "node-GetPageId", "target": "node-SearchTemplateNodes", "sourceHandle": "output-pageId", "targetHandle": "input-nodeId" },
+      { "id": "e-start-searchtemplate-arg1", "source": "node-start", "target": "node-SearchTemplateNodes", "sourceHandle": "output-arg1", "targetHandle": "input-nodeLabel" },
+      { "id": "e-searchtemplate-firsttemplate", "source": "node-SearchTemplateNodes", "target": "node-FirstTemplateNode", "sourceHandle": "output-nodeIds", "targetHandle": "input-rows" },
+      { "id": "e-firsttemplate-createinstance", "source": "node-FirstTemplateNode", "target": "node-CreateInstance", "sourceHandle": "output-row", "targetHandle": "input-nodeId" },
+      { "id": "e-createinstance-end", "source": "node-CreateInstance", "target": "node-end", "sourceHandle": "output-nodeId", "targetHandle": "input-nodeId" },
+
+      { "id": "e-getpageid-createedge", "source": "node-GetPageId", "target": "node-CreateEdge", "sourceHandle": "output-pageId", "targetHandle": "input-sourceNodeId" },
+      { "id": "e-createinstance-createedge", "source": "node-CreateInstance", "target": "node-CreateEdge", "sourceHandle": "output-nodeId", "targetHandle": "input-targetNodeId" }
+    ]
+  }
+}

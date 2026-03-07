@@ -1,0 +1,61 @@
+{
+  "id": "TabOldWF",
+  "version": "1.0.0",
+  "name": "TabOldWF",
+  "description": "旧タブ操作を実行する。バックエンドのTabOldWF.phpへ委譲。",
+  "inputs": {
+    "arg1": { "schema": "string" },
+    "arg2": { "schema": "string" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "Execute",
+        "operation": "TabOldWF",
+        "deps": {
+          "nodeId": { "sourceAcId": "$input", "sourcePort": "arg1" },
+          "label": { "sourceAcId": "$input", "sourcePort": "arg2" }
+        },
+        "outputs": { "nodeId": {} },
+        "wfCall": { "callee": "TabOldWF", "boundary": true }
+      }
+    ],
+    "outputs": {
+      "nodeId": "Execute.nodeId"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-Execute",
+        "when": { "type": "Execute.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "TabOldWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.85 },
+    "nodes": [
+      {
+        "id": "node-start", "type": "ewoStart", "position": { "x": 50, "y": 150 },
+        "data": { "inputs": [{ "name": "arg1", "type": "string" }, { "name": "arg2", "type": "string" }] }
+      },
+      {
+        "id": "node-Execute", "type": "ewoWfCall", "position": { "x": 350, "y": 150 },
+        "data": { "label": "Execute", "operation": "TabOldWF", "inputs": [{ "name": "nodeId", "type": "string" }, { "name": "label", "type": "string" }], "outputs": [{ "name": "nodeId", "type": "any" }], "wfCall": { "callee": "TabOldWF", "boundary": true } }
+      },
+      {
+        "id": "node-end", "type": "ewoEnd", "position": { "x": 650, "y": 150 },
+        "data": { "outputs": [{ "name": "nodeId", "type": "any" }] }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-exec", "source": "node-start", "target": "node-Execute" },
+      { "id": "e-exec-end", "source": "node-Execute", "target": "node-end", "sourceHandle": "output-nodeId", "targetHandle": "input-nodeId" }
+    ]
+  }
+}

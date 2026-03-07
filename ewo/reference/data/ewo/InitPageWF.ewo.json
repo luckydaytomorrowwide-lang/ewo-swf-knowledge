@@ -1,0 +1,122 @@
+{
+  "id": "InitPageWF",
+  "version": "1.0.0",
+  "name": "InitPageWF",
+  "description": "URL情報からページ構成を初期化する。LookupPageRouteMasterAC→OpenPageConfigWF(wfCall)の2ステップ。RouteMasterからプロパティを取得してOpenPageConfigWFに委譲。",
+  "inputs": {
+    "routeKey": { "schema": "string" },
+    "nodeId": { "schema": "string" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "LookupMaster",
+        "operation": "LookupPageRouteMasterAC",
+        "deps": {
+          "routeKey": { "sourceAcId": "$input", "sourcePort": "routeKey" }
+        },
+        "outputs": { "property": {} }
+      },
+      {
+        "id": "InjectNodeId",
+        "operation": "MergePropertyNodeIdAC",
+        "deps": {
+          "property": { "sourceAcId": "LookupMaster", "sourcePort": "property" },
+          "nodeId": { "sourceAcId": "$input", "sourcePort": "nodeId" }
+        },
+        "outputs": { "property": {} }
+      },
+      {
+        "id": "OpenPageConfig",
+        "operation": "OpenPageConfigWF",
+        "deps": {
+          "jointIds[]": { "sourceAcId": "InjectNodeId", "sourcePort": "property.jointIds[]" },
+          "layoutMapConfigId": { "sourceAcId": "InjectNodeId", "sourcePort": "property.layoutMapConfigId" },
+          "snackingConfigIds": { "sourceAcId": "InjectNodeId", "sourcePort": "property.snackingConfigIds" },
+          "buttonConfigId": { "sourceAcId": "InjectNodeId", "sourcePort": "property.buttonConfigId" },
+          "display": { "sourceAcId": "InjectNodeId", "sourcePort": "property.display" },
+          "searchType": { "sourceAcId": "InjectNodeId", "sourcePort": "property.searchType" },
+          "currentNodeId": { "sourceAcId": "InjectNodeId", "sourcePort": "property.currentNodeId" },
+          "edgeType": { "sourceAcId": "InjectNodeId", "sourcePort": "property.edgeType" },
+          "nodeLabel": { "sourceAcId": "InjectNodeId", "sourcePort": "property.nodeLabel" },
+          "row": { "sourceAcId": "InjectNodeId", "sourcePort": "property.row" }
+        },
+        "outputs": {},
+        "wfCall": { "callee": "OpenPageConfigWF", "boundary": true }
+      }
+    ],
+    "outputs": {
+      "success": "OpenPageConfig.success"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-LookupMaster",
+        "when": { "type": "LookupMaster.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "InjectNodeId.property", "wfid": "InitPageWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-InjectNodeId",
+        "when": { "type": "InjectNodeId.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "OpenPageConfig.jointIds[]", "wfid": "InitPageWF", "map": "outputRef->payloadRef" },
+          { "type": "OpenPageConfig.layoutMapConfigId", "wfid": "InitPageWF", "map": "outputRef->payloadRef" },
+          { "type": "OpenPageConfig.snackingConfigIds", "wfid": "InitPageWF", "map": "outputRef->payloadRef" },
+          { "type": "OpenPageConfig.buttonConfigId", "wfid": "InitPageWF", "map": "outputRef->payloadRef" },
+          { "type": "OpenPageConfig.display", "wfid": "InitPageWF", "map": "outputRef->payloadRef" },
+          { "type": "OpenPageConfig.searchType", "wfid": "InitPageWF", "map": "outputRef->payloadRef" },
+          { "type": "OpenPageConfig.currentNodeId", "wfid": "InitPageWF", "map": "outputRef->payloadRef" },
+          { "type": "OpenPageConfig.edgeType", "wfid": "InitPageWF", "map": "outputRef->payloadRef" },
+          { "type": "OpenPageConfig.nodeLabel", "wfid": "InitPageWF", "map": "outputRef->payloadRef" },
+          { "type": "OpenPageConfig.row", "wfid": "InitPageWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-OpenPageConfig",
+        "when": { "type": "OpenPageConfig.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "InitPageWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.7 },
+    "nodes": [
+      {
+        "id": "node-start", "type": "ewoStart", "position": { "x": 50, "y": 180 },
+        "data": { "inputs": [{ "name": "routeKey", "type": "string" }, { "name": "nodeId", "type": "string" }] }
+      },
+      {
+        "id": "node-LookupMaster", "type": "ewoAc", "position": { "x": 320, "y": 180 },
+        "data": { "label": "LookupMaster", "operation": "LookupPageRouteMasterAC", "inputs": [{ "name": "routeKey", "type": "string" }], "outputs": [{ "name": "property", "type": "object" }] }
+      },
+      {
+        "id": "node-InjectNodeId", "type": "ewoAc", "position": { "x": 580, "y": 180 },
+        "data": { "label": "InjectNodeId", "operation": "MergePropertyNodeIdAC", "inputs": [{ "name": "property", "type": "object" }, { "name": "nodeId", "type": "string" }], "outputs": [{ "name": "property", "type": "object" }] }
+      },
+      {
+        "id": "node-OpenPageConfig", "type": "ewoWfCall", "position": { "x": 860, "y": 180 },
+        "data": { "label": "OpenPageConfig", "operation": "OpenPageConfigWF", "inputs": [{ "name": "jointIds[]", "type": "string" }, { "name": "layoutMapConfigId", "type": "string" }, { "name": "snackingConfigIds", "type": "string" }, { "name": "buttonConfigId", "type": "string" }, { "name": "display", "type": "string" }, { "name": "searchType", "type": "string" }, { "name": "currentNodeId", "type": "string" }, { "name": "edgeType", "type": "string" }, { "name": "nodeLabel", "type": "string" }, { "name": "row", "type": "any" }], "outputs": [], "wfCall": { "callee": "OpenPageConfigWF", "boundary": true } }
+      },
+      {
+        "id": "node-end", "type": "ewoEnd", "position": { "x": 1180, "y": 180 },
+        "data": { "outputs": [] }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-lookup", "source": "node-start", "target": "node-LookupMaster", "sourceHandle": "output-routeKey", "targetHandle": "input-routeKey" },
+      { "id": "e-start-inject-nodeId", "source": "node-start", "target": "node-InjectNodeId", "sourceHandle": "output-nodeId", "targetHandle": "input-nodeId" },
+      { "id": "e-lookup-inject", "source": "node-LookupMaster", "target": "node-InjectNodeId", "sourceHandle": "output-property", "targetHandle": "input-property" },
+      { "id": "e-inject-openConfig", "source": "node-InjectNodeId", "target": "node-OpenPageConfig" },
+      { "id": "e-openConfig-end", "source": "node-OpenPageConfig", "target": "node-end" }
+    ]
+  }
+}

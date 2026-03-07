@@ -1,0 +1,271 @@
+{
+  "id": "OpenPageConfigWF",
+  "version": "1.0.0",
+  "name": "OpenPageConfigWF",
+  "description": "ページ/コンテキスト設定ロード: プロパティから各種マスタデータをロードしStoreに展開する。jointIds[]→CNCF、layoutMapConfigId/snackingConfigIds/buttonConfigId→各Config、display/searchNode→SetAnswerDataAC。",
+  "inputs": {
+    "jointIds[]": { "schema": "string" },
+    "layoutMapConfigId": { "schema": "string" },
+    "snackingConfigIds": { "schema": "string" },
+    "buttonConfigId": { "schema": "string" },
+    "display": { "schema": "string" },
+    "searchType": { "schema": "string" },
+    "currentNodeId": { "schema": "string" },
+    "edgeType": { "schema": "string" },
+    "nodeLabel": { "schema": "string" },
+    "row": { "schema": "any" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "ParseCncfRef",
+        "operation": "ParseCellRefAC",
+        "deps": {
+          "cellRef": { "sourceAcId": "$input", "sourcePort": "jointIds[]" }
+        },
+        "outputs": { "table": {}, "lineId": {}, "key": {} }
+      },
+      {
+        "id": "RetrieveCncf",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "ParseCncfRef", "sourcePort": "table" },
+          "lineId": { "sourceAcId": "ParseCncfRef", "sourcePort": "lineId" },
+          "column": { "sourceAcId": "ParseCncfRef", "sourcePort": "key" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstCncf",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveCncf", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "SetCncf",
+        "operation": "SetAnswerDataAC",
+        "deps": {
+          "key": { "literal": "cncf" },
+          "data": { "sourceAcId": "FirstCncf", "sourcePort": "row" },
+          "options": { "literal": { "kind": "workflow", "type": "page-config", "autoRun": true } }
+        },
+        "outputs": {}
+      },
+      {
+        "id": "ParseLayoutMapRef",
+        "operation": "ParseCellRefAC",
+        "deps": {
+          "cellRef": { "sourceAcId": "$input", "sourcePort": "layoutMapConfigId" }
+        },
+        "outputs": { "table": {}, "lineId": {}, "key": {} }
+      },
+      {
+        "id": "RetrieveLayoutMap",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "ParseLayoutMapRef", "sourcePort": "table" },
+          "lineId": { "sourceAcId": "ParseLayoutMapRef", "sourcePort": "lineId" },
+          "column": { "sourceAcId": "ParseLayoutMapRef", "sourcePort": "key" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstLayoutMap",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveLayoutMap", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "SetLayoutMap",
+        "operation": "SetAnswerDataAC",
+        "deps": {
+          "key": { "literal": "layoutmap_config" },
+          "data": { "sourceAcId": "FirstLayoutMap", "sourcePort": "row" },
+          "options": { "literal": { "kind": "data", "type": "page-config" } }
+        },
+        "outputs": {}
+      },
+      {
+        "id": "ParseSnackingRef",
+        "operation": "ParseCellRefAC",
+        "deps": {
+          "cellRef": { "sourceAcId": "$input", "sourcePort": "snackingConfigIds" }
+        },
+        "outputs": { "table": {}, "lineId": {}, "key": {} }
+      },
+      {
+        "id": "RetrieveSnacking",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "ParseSnackingRef", "sourcePort": "table" },
+          "lineId": { "sourceAcId": "ParseSnackingRef", "sourcePort": "lineId" },
+          "column": { "sourceAcId": "ParseSnackingRef", "sourcePort": "key" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstSnacking",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveSnacking", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "SetSnacking",
+        "operation": "SetAnswerDataAC",
+        "deps": {
+          "key": { "literal": "snacking_config" },
+          "data": { "sourceAcId": "FirstSnacking", "sourcePort": "row" },
+          "options": { "literal": { "kind": "data", "type": "page-config" } }
+        },
+        "outputs": {}
+      },
+      {
+        "id": "ParseButtonRef",
+        "operation": "ParseCellRefAC",
+        "deps": {
+          "cellRef": { "sourceAcId": "$input", "sourcePort": "buttonConfigId" }
+        },
+        "outputs": { "table": {}, "lineId": {}, "key": {} }
+      },
+      {
+        "id": "RetrieveButton",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "ParseButtonRef", "sourcePort": "table" },
+          "lineId": { "sourceAcId": "ParseButtonRef", "sourcePort": "lineId" },
+          "column": { "sourceAcId": "ParseButtonRef", "sourcePort": "key" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstButton",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveButton", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "SetButton",
+        "operation": "SetAnswerDataAC",
+        "deps": {
+          "key": { "literal": "button_config" },
+          "data": { "sourceAcId": "FirstButton", "sourcePort": "row" },
+          "options": { "literal": { "kind": "data", "type": "page-config" } }
+        },
+        "outputs": {}
+      },
+      {
+        "id": "SetDisplay",
+        "operation": "SetAnswerDataAC",
+        "deps": {
+          "key": { "literal": "display" },
+          "data": { "sourceAcId": "$input", "sourcePort": "display" },
+          "options": { "literal": { "kind": "data", "type": "page-config" } }
+        },
+        "outputs": {}
+      },
+      {
+        "id": "BuildSearchNodeData",
+        "operation": "BuildSearchNodeDataAC",
+        "deps": {
+          "searchType": { "sourceAcId": "$input", "sourcePort": "searchType" },
+          "currentNodeId": { "sourceAcId": "$input", "sourcePort": "currentNodeId" },
+          "edgeType": { "sourceAcId": "$input", "sourcePort": "edgeType" },
+          "nodeLabel": { "sourceAcId": "$input", "sourcePort": "nodeLabel" },
+          "row": { "sourceAcId": "$input", "sourcePort": "row" }
+        },
+        "outputs": { "data": {} }
+      },
+      {
+        "id": "SetSearchNode",
+        "operation": "SetAnswerDataAC",
+        "deps": {
+          "key": { "literal": "search_node" },
+          "data": { "sourceAcId": "BuildSearchNodeData", "sourcePort": "data" },
+          "options": { "literal": { "kind": "data", "type": "page-config" } }
+        },
+        "outputs": {}
+      }
+    ],
+    "outputs": {}
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      { "id": "R-ParseCncfRef", "when": { "type": "ParseCncfRef.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "RetrieveCncf.tableId", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }, { "type": "RetrieveCncf.lineId", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }, { "type": "RetrieveCncf.column", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-RetrieveCncf", "when": { "type": "RetrieveCncf.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "FirstCncf.rows", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-FirstCncf", "when": { "type": "FirstCncf.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "SetCncf.data", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-SetCncf", "when": { "type": "SetCncf.done" }, "correlate": { "by": ["correlationid"] }, "emit": [] },
+      { "id": "R-ParseLayoutMapRef", "when": { "type": "ParseLayoutMapRef.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "RetrieveLayoutMap.tableId", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }, { "type": "RetrieveLayoutMap.lineId", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }, { "type": "RetrieveLayoutMap.column", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-RetrieveLayoutMap", "when": { "type": "RetrieveLayoutMap.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "FirstLayoutMap.rows", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-FirstLayoutMap", "when": { "type": "FirstLayoutMap.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "SetLayoutMap.data", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-SetLayoutMap", "when": { "type": "SetLayoutMap.done" }, "correlate": { "by": ["correlationid"] }, "emit": [] },
+      { "id": "R-ParseSnackingRef", "when": { "type": "ParseSnackingRef.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "RetrieveSnacking.tableId", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }, { "type": "RetrieveSnacking.lineId", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }, { "type": "RetrieveSnacking.column", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-RetrieveSnacking", "when": { "type": "RetrieveSnacking.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "FirstSnacking.rows", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-FirstSnacking", "when": { "type": "FirstSnacking.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "SetSnacking.data", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-SetSnacking", "when": { "type": "SetSnacking.done" }, "correlate": { "by": ["correlationid"] }, "emit": [] },
+      { "id": "R-ParseButtonRef", "when": { "type": "ParseButtonRef.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "RetrieveButton.tableId", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }, { "type": "RetrieveButton.lineId", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }, { "type": "RetrieveButton.column", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-RetrieveButton", "when": { "type": "RetrieveButton.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "FirstButton.rows", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-FirstButton", "when": { "type": "FirstButton.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "SetButton.data", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-SetButton", "when": { "type": "SetButton.done" }, "correlate": { "by": ["correlationid"] }, "emit": [] },
+      { "id": "R-SetDisplay", "when": { "type": "SetDisplay.done" }, "correlate": { "by": ["correlationid"] }, "emit": [] },
+      { "id": "R-BuildSearchNodeData", "when": { "type": "BuildSearchNodeData.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "SetSearchNode.data", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] },
+      { "id": "R-SetSearchNode", "when": { "type": "SetSearchNode.done" }, "correlate": { "by": ["correlationid"] }, "emit": [{ "type": "wf.completed", "wfid": "OpenPageConfigWF", "map": "outputRef->payloadRef" }] }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.35 },
+    "nodes": [
+      { "id": "node-start", "type": "ewoStart", "position": { "x": 50, "y": 500 }, "data": { "inputs": [{ "name": "jointIds[]", "type": "string" }, { "name": "layoutMapConfigId", "type": "string" }, { "name": "snackingConfigIds", "type": "string" }, { "name": "buttonConfigId", "type": "string" }, { "name": "display", "type": "string" }, { "name": "searchType", "type": "string" }, { "name": "currentNodeId", "type": "string" }, { "name": "edgeType", "type": "string" }, { "name": "nodeLabel", "type": "string" }, { "name": "row", "type": "any" }] } },
+      { "id": "node-ParseCncfRef", "type": "ewoAc", "position": { "x": 400, "y": 80 }, "data": { "label": "ParseCncfRef", "operation": "ParseCellRefAC" } },
+      { "id": "node-RetrieveCncf", "type": "ewoAc", "position": { "x": 700, "y": 80 }, "data": { "label": "RetrieveCncf", "operation": "RetrieveColumnAC" } },
+      { "id": "node-FirstCncf", "type": "ewoAc", "position": { "x": 1000, "y": 80 }, "data": { "label": "FirstCncf", "operation": "FirstRowAC" } },
+      { "id": "node-SetCncf", "type": "ewoAc", "position": { "x": 1300, "y": 80 }, "data": { "label": "SetCncf", "operation": "SetAnswerDataAC" } },
+      { "id": "node-ParseLayoutMapRef", "type": "ewoAc", "position": { "x": 400, "y": 260 }, "data": { "label": "ParseLayoutMapRef", "operation": "ParseCellRefAC" } },
+      { "id": "node-RetrieveLayoutMap", "type": "ewoAc", "position": { "x": 700, "y": 260 }, "data": { "label": "RetrieveLayoutMap", "operation": "RetrieveColumnAC" } },
+      { "id": "node-FirstLayoutMap", "type": "ewoAc", "position": { "x": 1000, "y": 260 }, "data": { "label": "FirstLayoutMap", "operation": "FirstRowAC" } },
+      { "id": "node-SetLayoutMap", "type": "ewoAc", "position": { "x": 1300, "y": 260 }, "data": { "label": "SetLayoutMap", "operation": "SetAnswerDataAC" } },
+      { "id": "node-ParseSnackingRef", "type": "ewoAc", "position": { "x": 400, "y": 440 }, "data": { "label": "ParseSnackingRef", "operation": "ParseCellRefAC" } },
+      { "id": "node-RetrieveSnacking", "type": "ewoAc", "position": { "x": 700, "y": 440 }, "data": { "label": "RetrieveSnacking", "operation": "RetrieveColumnAC" } },
+      { "id": "node-FirstSnacking", "type": "ewoAc", "position": { "x": 1000, "y": 440 }, "data": { "label": "FirstSnacking", "operation": "FirstRowAC" } },
+      { "id": "node-SetSnacking", "type": "ewoAc", "position": { "x": 1300, "y": 440 }, "data": { "label": "SetSnacking", "operation": "SetAnswerDataAC" } },
+      { "id": "node-ParseButtonRef", "type": "ewoAc", "position": { "x": 400, "y": 620 }, "data": { "label": "ParseButtonRef", "operation": "ParseCellRefAC" } },
+      { "id": "node-RetrieveButton", "type": "ewoAc", "position": { "x": 700, "y": 620 }, "data": { "label": "RetrieveButton", "operation": "RetrieveColumnAC" } },
+      { "id": "node-FirstButton", "type": "ewoAc", "position": { "x": 1000, "y": 620 }, "data": { "label": "FirstButton", "operation": "FirstRowAC" } },
+      { "id": "node-SetButton", "type": "ewoAc", "position": { "x": 1300, "y": 620 }, "data": { "label": "SetButton", "operation": "SetAnswerDataAC" } },
+      { "id": "node-SetDisplay", "type": "ewoAc", "position": { "x": 400, "y": 800 }, "data": { "label": "SetDisplay", "operation": "SetAnswerDataAC" } },
+      { "id": "node-BuildSearchNodeData", "type": "ewoAc", "position": { "x": 400, "y": 950 }, "data": { "label": "BuildSearchNodeData", "operation": "BuildSearchNodeDataAC" } },
+      { "id": "node-SetSearchNode", "type": "ewoAc", "position": { "x": 700, "y": 950 }, "data": { "label": "SetSearchNode", "operation": "SetAnswerDataAC" } },
+      { "id": "node-end", "type": "ewoEnd", "position": { "x": 1600, "y": 500 }, "data": { "outputs": [] } }
+    ],
+    "edges": [
+      { "id": "e-start-parseCncf", "source": "node-start", "target": "node-ParseCncfRef", "sourceHandle": "output-jointIds[]", "targetHandle": "input-cellRef" },
+      { "id": "e-parseCncf-retrieve", "source": "node-ParseCncfRef", "target": "node-RetrieveCncf" },
+      { "id": "e-retrieveCncf-first", "source": "node-RetrieveCncf", "target": "node-FirstCncf", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+      { "id": "e-firstCncf-set", "source": "node-FirstCncf", "target": "node-SetCncf", "sourceHandle": "output-row", "targetHandle": "input-data" },
+      { "id": "e-start-parseLayoutMap", "source": "node-start", "target": "node-ParseLayoutMapRef", "sourceHandle": "output-layoutMapConfigId", "targetHandle": "input-cellRef" },
+      { "id": "e-parseLayoutMap-retrieve", "source": "node-ParseLayoutMapRef", "target": "node-RetrieveLayoutMap" },
+      { "id": "e-retrieveLayoutMap-first", "source": "node-RetrieveLayoutMap", "target": "node-FirstLayoutMap", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+      { "id": "e-firstLayoutMap-set", "source": "node-FirstLayoutMap", "target": "node-SetLayoutMap", "sourceHandle": "output-row", "targetHandle": "input-data" },
+      { "id": "e-start-parseSnacking", "source": "node-start", "target": "node-ParseSnackingRef", "sourceHandle": "output-snackingConfigIds", "targetHandle": "input-cellRef" },
+      { "id": "e-parseSnacking-retrieve", "source": "node-ParseSnackingRef", "target": "node-RetrieveSnacking" },
+      { "id": "e-retrieveSnacking-first", "source": "node-RetrieveSnacking", "target": "node-FirstSnacking", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+      { "id": "e-firstSnacking-set", "source": "node-FirstSnacking", "target": "node-SetSnacking", "sourceHandle": "output-row", "targetHandle": "input-data" },
+      { "id": "e-start-parseButton", "source": "node-start", "target": "node-ParseButtonRef", "sourceHandle": "output-buttonConfigId", "targetHandle": "input-cellRef" },
+      { "id": "e-parseButton-retrieve", "source": "node-ParseButtonRef", "target": "node-RetrieveButton" },
+      { "id": "e-retrieveButton-first", "source": "node-RetrieveButton", "target": "node-FirstButton", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+      { "id": "e-firstButton-set", "source": "node-FirstButton", "target": "node-SetButton", "sourceHandle": "output-row", "targetHandle": "input-data" },
+      { "id": "e-start-display", "source": "node-start", "target": "node-SetDisplay", "sourceHandle": "output-display", "targetHandle": "input-data" },
+      { "id": "e-start-searchNode", "source": "node-start", "target": "node-BuildSearchNodeData" },
+      { "id": "e-buildSearch-setSearch", "source": "node-BuildSearchNodeData", "target": "node-SetSearchNode", "sourceHandle": "output-data", "targetHandle": "input-data" },
+      { "id": "e-setSearch-end", "source": "node-SetSearchNode", "target": "node-end" }
+    ]
+  }
+}

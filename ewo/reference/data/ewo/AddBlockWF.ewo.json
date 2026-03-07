@@ -1,0 +1,70 @@
+{
+  "id": "AddBlockWF",
+  "version": "1.0.0",
+  "name": "AddBlockWF",
+  "description": "ブロック構造を別のテーブルに追加する。バックエンドのAddBlockWF.phpへ委譲。",
+  "inputs": {
+    "targetTableId": { "schema": "string" },
+    "targetParentId": { "schema": "string" },
+    "sourceTableId": { "schema": "string" },
+    "sourceLineId": { "schema": "string" },
+    "depth": { "schema": "number" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "Execute",
+        "operation": "AddBlockWF",
+        "deps": {
+          "targetTableId": { "sourceAcId": "$input", "sourcePort": "targetTableId" },
+          "targetParentId": { "sourceAcId": "$input", "sourcePort": "targetParentId" },
+          "sourceTableId": { "sourceAcId": "$input", "sourcePort": "sourceTableId" },
+          "sourceLineId": { "sourceAcId": "$input", "sourcePort": "sourceLineId" },
+          "depth": { "sourceAcId": "$input", "sourcePort": "depth" }
+        },
+        "outputs": { "affectedStructRowsCount": {}, "affectedDataRowsCount": {} },
+        "wfCall": { "callee": "AddBlockWF", "boundary": true }
+      }
+    ],
+    "outputs": {
+      "affectedStructRowsCount": "Execute.affectedStructRowsCount",
+      "affectedDataRowsCount": "Execute.affectedDataRowsCount"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-Execute",
+        "when": { "type": "Execute.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "AddBlockWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.85 },
+    "nodes": [
+      {
+        "id": "node-start", "type": "ewoStart", "position": { "x": 50, "y": 150 },
+        "data": { "inputs": [{ "name": "targetTableId", "type": "string" }, { "name": "targetParentId", "type": "string" }, { "name": "sourceTableId", "type": "string" }, { "name": "sourceLineId", "type": "string" }, { "name": "depth", "type": "number" }] }
+      },
+      {
+        "id": "node-Execute", "type": "ewoWfCall", "position": { "x": 350, "y": 150 },
+        "data": { "label": "Execute", "operation": "AddBlockWF", "inputs": [{ "name": "targetTableId", "type": "string" }, { "name": "targetParentId", "type": "string" }, { "name": "sourceTableId", "type": "string" }, { "name": "sourceLineId", "type": "string" }, { "name": "depth", "type": "number" }], "outputs": [{ "name": "affectedStructRowsCount", "type": "number" }, { "name": "affectedDataRowsCount", "type": "number" }], "wfCall": { "callee": "AddBlockWF", "boundary": true } }
+      },
+      {
+        "id": "node-end", "type": "ewoEnd", "position": { "x": 650, "y": 150 },
+        "data": { "outputs": [{ "name": "affectedStructRowsCount", "type": "number" }, { "name": "affectedDataRowsCount", "type": "number" }] }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-exec-targetTableId", "source": "node-start", "target": "node-Execute", "sourceHandle": "output-targetTableId", "targetHandle": "input-targetTableId" },
+      { "id": "e-start-exec-sourceTableId", "source": "node-start", "target": "node-Execute", "sourceHandle": "output-sourceTableId", "targetHandle": "input-sourceTableId" },
+      { "id": "e-start-exec-sourceLineId", "source": "node-start", "target": "node-Execute", "sourceHandle": "output-sourceLineId", "targetHandle": "input-sourceLineId" },
+      { "id": "e-exec-end", "source": "node-Execute", "target": "node-end" }
+    ]
+  }
+}

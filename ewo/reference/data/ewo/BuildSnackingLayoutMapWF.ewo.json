@@ -1,0 +1,109 @@
+{
+  "id": "BuildSnackingLayoutMapWF",
+  "version": "1.0.0",
+  "name": "BuildSnackingLayoutMapWF",
+  "description": "Snacking LayoutのMapデータを構築する。BuildLayoutSnackingWF→ConvertLayoutRowsToMapAC→PatchLayoutMapACの3ステップ直列。",
+  "inputs": {
+    "nodeIds": { "schema": "string" },
+    "configId": { "schema": "string" },
+    "snackingConfig": { "schema": "any[]" },
+    "buttonConfig": { "schema": "any[]" },
+    "keyMapConfig": { "schema": "object" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "BuildLayout",
+        "operation": "BuildLayoutSnackingWF",
+        "deps": {
+          "nodeIds": { "sourceAcId": "$input", "sourcePort": "nodeIds" },
+          "configId": { "sourceAcId": "$input", "sourcePort": "configId" },
+          "snackingConfig": { "sourceAcId": "$input", "sourcePort": "snackingConfig" },
+          "buttonConfig": { "sourceAcId": "$input", "sourcePort": "buttonConfig" },
+          "keyMapConfig": { "sourceAcId": "$input", "sourcePort": "keyMapConfig" }
+        },
+        "outputs": { "layoutRows": {} },
+        "wfCall": { "callee": "BuildLayoutSnackingWF", "boundary": true }
+      },
+      {
+        "id": "ConvertToMap",
+        "operation": "ConvertLayoutRowsToMapAC",
+        "deps": {
+          "layoutRows": { "sourceAcId": "BuildLayout", "sourcePort": "layoutRows" }
+        },
+        "outputs": { "layoutMapData": {} }
+      },
+      {
+        "id": "PatchMap",
+        "operation": "PatchLayoutMapAC",
+        "deps": {
+          "layoutMapData": { "sourceAcId": "ConvertToMap", "sourcePort": "layoutMapData" }
+        },
+        "outputs": { "layoutMapData": {} }
+      }
+    ],
+    "outputs": {
+      "layoutMapData": "PatchMap.layoutMapData"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-BuildLayout",
+        "when": { "type": "BuildLayout.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "ConvertToMap.layoutRows", "wfid": "BuildSnackingLayoutMapWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-ConvertToMap",
+        "when": { "type": "ConvertToMap.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "PatchMap.layoutMapData", "wfid": "BuildSnackingLayoutMapWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-PatchMap",
+        "when": { "type": "PatchMap.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "BuildSnackingLayoutMapWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.8 },
+    "nodes": [
+      {
+        "id": "node-start", "type": "ewoStart", "position": { "x": 50, "y": 150 },
+        "data": { "inputs": [{ "name": "nodeIds", "type": "string" }, { "name": "configId", "type": "string" }, { "name": "snackingConfig", "type": "any[]" }, { "name": "buttonConfig", "type": "any[]" }, { "name": "keyMapConfig", "type": "object" }] }
+      },
+      {
+        "id": "node-BuildLayout", "type": "ewoWfCall", "position": { "x": 350, "y": 150 },
+        "data": { "label": "BuildLayout", "operation": "BuildLayoutSnackingWF", "inputs": [{ "name": "nodeIds", "type": "string" }, { "name": "configId", "type": "string" }, { "name": "snackingConfig", "type": "any[]" }, { "name": "buttonConfig", "type": "any[]" }, { "name": "keyMapConfig", "type": "object" }], "outputs": [{ "name": "layoutRows", "type": "object[]" }], "wfCall": { "callee": "BuildLayoutSnackingWF", "boundary": true } }
+      },
+      {
+        "id": "node-ConvertToMap", "type": "ewoAc", "position": { "x": 660, "y": 150 },
+        "data": { "label": "ConvertToMap", "operation": "ConvertLayoutRowsToMapAC", "inputs": [{ "name": "layoutRows", "type": "object[]" }], "outputs": [{ "name": "layoutMapData", "type": "object" }] }
+      },
+      {
+        "id": "node-PatchMap", "type": "ewoAc", "position": { "x": 940, "y": 150 },
+        "data": { "label": "PatchMap", "operation": "PatchLayoutMapAC", "inputs": [{ "name": "layoutMapData", "type": "object" }], "outputs": [{ "name": "layoutMapData", "type": "object" }] }
+      },
+      {
+        "id": "node-end", "type": "ewoEnd", "position": { "x": 1200, "y": 150 },
+        "data": { "outputs": [{ "name": "layoutMapData", "type": "object" }] }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-build", "source": "node-start", "target": "node-BuildLayout" },
+      { "id": "e-build-convert", "source": "node-BuildLayout", "target": "node-ConvertToMap", "sourceHandle": "output-layoutRows", "targetHandle": "input-layoutRows" },
+      { "id": "e-convert-patch", "source": "node-ConvertToMap", "target": "node-PatchMap", "sourceHandle": "output-layoutMapData", "targetHandle": "input-layoutMapData" },
+      { "id": "e-patch-end", "source": "node-PatchMap", "target": "node-end", "sourceHandle": "output-layoutMapData", "targetHandle": "input-layoutMapData" }
+    ]
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "id": "CreateStructTableConfigWF",
+  "version": "1.0.0",
+  "name": "CreateStructTableConfigWF",
+  "description": "構造テーブル設定行を作成する。BuildSnackingNoAC→structTableConfigRowを構築して返す単一ステップ。",
+  "inputs": {
+    "tableId": { "schema": "string" },
+    "column": { "schema": "string" },
+    "lineId": { "schema": "string" },
+    "anchorId": { "schema": "string" },
+    "anchorUcat": { "schema": "string" },
+    "blockKey": { "schema": "string" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "BuildSnackingNo",
+        "operation": "BuildSnackingNoAC",
+        "deps": {
+          "tableId": { "sourceAcId": "$input", "sourcePort": "tableId" },
+          "lineId": { "sourceAcId": "$input", "sourcePort": "lineId" },
+          "column": { "sourceAcId": "$input", "sourcePort": "column" }
+        },
+        "outputs": { "snackingNo": {} }
+      },
+      {
+        "id": "BuildConfigRow",
+        "operation": "BuildStructTableConfigRowAC",
+        "deps": {
+          "anchorId": { "sourceAcId": "$input", "sourcePort": "anchorId" },
+          "anchorUcat": { "sourceAcId": "$input", "sourcePort": "anchorUcat" },
+          "snackingNo": { "sourceAcId": "BuildSnackingNo", "sourcePort": "snackingNo" },
+          "blockKey": { "sourceAcId": "$input", "sourcePort": "blockKey" }
+        },
+        "outputs": { "structTableConfigRow": {} }
+      }
+    ],
+    "outputs": {
+      "structTableConfigRow": "BuildConfigRow.structTableConfigRow"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-BuildSnackingNo",
+        "when": { "type": "BuildSnackingNo.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "BuildConfigRow.snackingNo", "wfid": "CreateStructTableConfigWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-BuildConfigRow",
+        "when": { "type": "BuildConfigRow.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "CreateStructTableConfigWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.85 },
+    "nodes": [
+      {
+        "id": "node-start", "type": "ewoStart", "position": { "x": 50, "y": 150 },
+        "data": { "inputs": [{ "name": "tableId", "type": "string" }, { "name": "column", "type": "string" }, { "name": "lineId", "type": "string" }, { "name": "anchorId", "type": "string" }, { "name": "anchorUcat", "type": "string" }, { "name": "blockKey", "type": "string" }] }
+      },
+      {
+        "id": "node-BuildSnackingNo", "type": "ewoAc", "position": { "x": 350, "y": 150 },
+        "data": { "label": "BuildSnackingNo", "operation": "BuildSnackingNoAC", "inputs": [{ "name": "tableId", "type": "string" }, { "name": "lineId", "type": "string" }, { "name": "column", "type": "string" }], "outputs": [{ "name": "snackingNo", "type": "string" }] }
+      },
+      {
+        "id": "node-BuildConfigRow", "type": "ewoAc", "position": { "x": 620, "y": 150 },
+        "data": { "label": "BuildConfigRow", "operation": "BuildStructTableConfigRowAC", "inputs": [{ "name": "anchorId", "type": "string" }, { "name": "anchorUcat", "type": "string" }, { "name": "snackingNo", "type": "string" }, { "name": "blockKey", "type": "string" }], "outputs": [{ "name": "structTableConfigRow", "type": "object" }] }
+      },
+      {
+        "id": "node-end", "type": "ewoEnd", "position": { "x": 920, "y": 150 },
+        "data": { "outputs": [{ "name": "structTableConfigRow", "type": "object" }] }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-buildNo", "source": "node-start", "target": "node-BuildSnackingNo" },
+      { "id": "e-start-buildRow-anchorId", "source": "node-start", "target": "node-BuildConfigRow", "sourceHandle": "output-anchorId", "targetHandle": "input-anchorId" },
+      { "id": "e-start-buildRow-anchorUcat", "source": "node-start", "target": "node-BuildConfigRow", "sourceHandle": "output-anchorUcat", "targetHandle": "input-anchorUcat" },
+      { "id": "e-start-buildRow-blockKey", "source": "node-start", "target": "node-BuildConfigRow", "sourceHandle": "output-blockKey", "targetHandle": "input-blockKey" },
+      { "id": "e-buildNo-buildRow", "source": "node-BuildSnackingNo", "target": "node-BuildConfigRow", "sourceHandle": "output-snackingNo", "targetHandle": "input-snackingNo" },
+      { "id": "e-buildRow-end", "source": "node-BuildConfigRow", "target": "node-end", "sourceHandle": "output-structTableConfigRow", "targetHandle": "input-structTableConfigRow" }
+    ]
+  }
+}

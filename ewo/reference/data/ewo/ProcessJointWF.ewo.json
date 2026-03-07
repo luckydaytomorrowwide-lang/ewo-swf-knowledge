@@ -1,0 +1,151 @@
+{
+  "id": "ProcessJointWF",
+  "version": "1.0.0",
+  "name": "ProcessJointWF",
+  "description": "Joint入力を処理する。ParseInput→ForEach[joints: FetchCncfAC→MergeInputAC→SaveToAnswerStoreAC]。Serverless Workflow形式からEWO形式への移植。",
+  "inputs": {
+    "input": { "schema": "any" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "ParseInput",
+        "operation": "ProcessJointInputAC",
+        "deps": {
+          "input": { "sourceAcId": "$input", "sourcePort": "input" }
+        },
+        "outputs": { "joints": {}, "property": {} }
+      },
+      {
+        "id": "FetchCncf",
+        "operation": "FetchCncfAC",
+        "deps": {
+          "jointId": { "sourceAcId": "$zoneInput", "sourcePort": "jointItem.jointId" }
+        },
+        "outputs": { "cncf": {} }
+      },
+      {
+        "id": "MergeInput",
+        "operation": "MergeInputAC",
+        "deps": {
+          "property": { "sourceAcId": "ParseInput", "sourcePort": "property" },
+          "joint": { "sourceAcId": "$zoneInput", "sourcePort": "jointItem" },
+          "cncf": { "sourceAcId": "FetchCncf", "sourcePort": "cncf" }
+        },
+        "outputs": { "cncf": {}, "input": {} }
+      },
+      {
+        "id": "SaveToStore",
+        "operation": "SaveToAnswerStoreAC",
+        "deps": {
+          "cncf": { "sourceAcId": "MergeInput", "sourcePort": "cncf" },
+          "input": { "sourceAcId": "MergeInput", "sourcePort": "input" }
+        },
+        "outputs": {}
+      }
+    ],
+    "forEachZones": [
+      {
+        "id": "jointZone",
+        "collectionSource": {
+          "sourceAcId": "ParseInput",
+          "sourcePort": "joints"
+        },
+        "iterationParam": "jointItem",
+        "nodes": ["FetchCncf", "MergeInput", "SaveToStore"],
+        "outputNodeId": "SaveToStore",
+        "outputPort": "result",
+        "outputCollection": "allJointResults"
+      }
+    ],
+    "outputs": {}
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-ParseInput",
+        "when": { "type": "ParseInput.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "$zone:jointZone.input", "wfid": "ProcessJointWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FetchCncf",
+        "when": { "type": "FetchCncf.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "MergeInput.cncf", "wfid": "ProcessJointWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-MergeInput",
+        "when": { "type": "MergeInput.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "SaveToStore.cncf", "wfid": "ProcessJointWF", "map": "outputRef->payloadRef" },
+          { "type": "SaveToStore.input", "wfid": "ProcessJointWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SaveToStore",
+        "when": { "type": "SaveToStore.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-$zone:jointZone",
+        "when": { "type": "$zone:jointZone.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "ProcessJointWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.6 },
+    "nodes": [
+      {
+        "id": "node-start", "type": "ewoStart", "position": { "x": 50, "y": 200 },
+        "data": { "inputs": [{ "name": "input", "type": "any" }] }
+      },
+      {
+        "id": "node-ParseInput", "type": "ewoAc", "position": { "x": 300, "y": 200 },
+        "data": { "label": "ParseInput", "operation": "ProcessJointInputAC", "inputs": [{ "name": "input", "type": "any" }], "outputs": [{ "name": "joints", "type": "any[]" }, { "name": "property", "type": "any" }] }
+      },
+      {
+        "id": "region-jointZone", "type": "ewoForEachRegion", "position": { "x": 580, "y": 100 },
+        "style": { "width": "900px", "height": "300px" },
+        "data": { "label": "JointZone (joints iterate)", "zoneId": "jointZone", "iterationParam": "jointItem", "outputCollection": "allJointResults" }
+      },
+      {
+        "id": "node-FetchCncf", "type": "ewoAc", "position": { "x": 30, "y": 80 },
+        "parentNode": "region-jointZone", "extent": "parent",
+        "data": { "label": "FetchCncf", "operation": "FetchCncfAC", "inputs": [{ "name": "jointId", "type": "string" }], "outputs": [{ "name": "cncf", "type": "any" }] }
+      },
+      {
+        "id": "node-MergeInput", "type": "ewoAc", "position": { "x": 320, "y": 80 },
+        "parentNode": "region-jointZone", "extent": "parent",
+        "data": { "label": "MergeInput", "operation": "MergeInputAC", "inputs": [{ "name": "property", "type": "any" }, { "name": "joint", "type": "any" }, { "name": "cncf", "type": "any" }], "outputs": [{ "name": "cncf", "type": "any" }, { "name": "input", "type": "any" }] }
+      },
+      {
+        "id": "node-SaveToStore", "type": "ewoAc", "position": { "x": 620, "y": 80 },
+        "parentNode": "region-jointZone", "extent": "parent",
+        "data": { "label": "SaveToStore", "operation": "SaveToAnswerStoreAC", "inputs": [{ "name": "cncf", "type": "any" }, { "name": "input", "type": "any" }], "outputs": [] }
+      },
+      {
+        "id": "node-end", "type": "ewoEnd", "position": { "x": 1550, "y": 200 },
+        "data": { "outputs": [] }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-parse", "source": "node-start", "target": "node-ParseInput", "sourceHandle": "output-input", "targetHandle": "input-input" },
+      { "id": "e-parse-zone", "source": "node-ParseInput", "target": "region-jointZone", "sourceHandle": "output-joints", "targetHandle": "input-collection" },
+      { "id": "e-fetch-merge", "source": "node-FetchCncf", "target": "node-MergeInput", "sourceHandle": "output-cncf", "targetHandle": "input-cncf" },
+      { "id": "e-merge-save", "source": "node-MergeInput", "target": "node-SaveToStore" },
+      { "id": "e-zone-end", "source": "region-jointZone", "target": "node-end" }
+    ]
+  }
+}

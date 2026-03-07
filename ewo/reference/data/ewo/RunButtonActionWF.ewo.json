@@ -1,0 +1,234 @@
+{
+  "id": "RunButtonActionWF",
+  "version": "1.0.0",
+  "name": "RunButtonActionWF",
+  "description": "ボタンアクションを実行する。ボタンデータからjointIdを抽出し、CNCF JSONを取得してワークフローを起動する。",
+  "inputs": {
+    "jointId": { "schema": "string" },
+    "label": { "schema": "string" },
+    "data": { "schema": "any" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "ExtractJointIds",
+        "operation": "ExtractJointIdsAC",
+        "deps": {
+          "data": { "sourceAcId": "$input", "sourcePort": "data" }
+        },
+        "outputs": { "jointIds": {} }
+      },
+      {
+        "id": "ParseCellRef",
+        "operation": "ParseCellRefAC",
+        "deps": {
+          "cellRef": { "sourceAcId": "ExtractJointIds", "sourcePort": "jointIds" }
+        },
+        "outputs": { "table": {}, "lineId": {}, "key": {} }
+      },
+      {
+        "id": "RetrieveCol",
+        "operation": "RetrieveColumnAC",
+        "deps": {
+          "tableId": { "sourceAcId": "ParseCellRef", "sourcePort": "table" },
+          "lineId": { "sourceAcId": "ParseCellRef", "sourcePort": "lineId" },
+          "column": { "sourceAcId": "ParseCellRef", "sourcePort": "key" }
+        },
+        "outputs": { "columns": {} }
+      },
+      {
+        "id": "FirstCncf",
+        "operation": "FirstRowAC",
+        "deps": {
+          "rows": { "sourceAcId": "RetrieveCol", "sourcePort": "columns" }
+        },
+        "outputs": { "row": {} }
+      },
+      {
+        "id": "SetAnswer",
+        "operation": "SetAnswerDataAC",
+        "deps": {
+          "key": { "literal": "runKey" },
+          "data": { "sourceAcId": "FirstCncf", "sourcePort": "row" },
+          "options": { "literal": { "type": "workflow", "autoRun": true } },
+          "input": { "sourceAcId": "$input", "sourcePort": "data" }
+        },
+        "outputs": { "success": {}, "runKey": {} }
+      }
+    ],
+    "outputs": {
+      "success": "SetAnswer.success",
+      "runKey": "SetAnswer.runKey"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-ExtractJointIds",
+        "when": { "type": "ExtractJointIds.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "ParseCellRef.cellRef", "wfid": "RunButtonActionWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-ParseCellRef",
+        "when": { "type": "ParseCellRef.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "RetrieveCol.tableId", "wfid": "RunButtonActionWF", "map": "outputRef->payloadRef" },
+          { "type": "RetrieveCol.lineId", "wfid": "RunButtonActionWF", "map": "outputRef->payloadRef" },
+          { "type": "RetrieveCol.column", "wfid": "RunButtonActionWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-RetrieveCol",
+        "when": { "type": "RetrieveCol.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "FirstCncf.rows", "wfid": "RunButtonActionWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-FirstCncf",
+        "when": { "type": "FirstCncf.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "SetAnswer.data", "wfid": "RunButtonActionWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-SetAnswer",
+        "when": { "type": "SetAnswer.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "RunButtonActionWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.6 },
+    "nodes": [
+      {
+        "id": "node-start",
+        "type": "ewoStart",
+        "position": { "x": 50, "y": 200 },
+        "data": {
+          "inputs": [
+            { "name": "jointId", "type": "string" },
+            { "name": "label", "type": "string" },
+            { "name": "data", "type": "any" }
+          ]
+        }
+      },
+      {
+        "id": "node-ExtractJointIds",
+        "type": "ewoAc",
+        "position": { "x": 310, "y": 200 },
+        "data": {
+          "label": "ExtractJointIds",
+          "operation": "ExtractJointIdsAC",
+          "inputs": [
+            { "name": "data", "type": "any" }
+          ],
+          "outputs": [
+            { "name": "jointIds", "type": "any" }
+          ]
+        }
+      },
+      {
+        "id": "node-ParseCellRef",
+        "type": "ewoAc",
+        "position": { "x": 570, "y": 200 },
+        "data": {
+          "label": "ParseCellRef",
+          "operation": "ParseCellRefAC",
+          "inputs": [
+            { "name": "cellRef", "type": "any" }
+          ],
+          "outputs": [
+            { "name": "table", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "key", "type": "string" }
+          ]
+        }
+      },
+      {
+        "id": "node-RetrieveCol",
+        "type": "ewoAc",
+        "position": { "x": 830, "y": 200 },
+        "data": {
+          "label": "RetrieveCol",
+          "operation": "RetrieveColumnAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "column", "type": "string" }
+          ],
+          "outputs": [
+            { "name": "columns", "type": "any[]" }
+          ]
+        }
+      },
+      {
+        "id": "node-FirstCncf",
+        "type": "ewoAc",
+        "position": { "x": 1090, "y": 200 },
+        "data": {
+          "label": "FirstCncf",
+          "operation": "FirstRowAC",
+          "inputs": [
+            { "name": "rows", "type": "any[]" }
+          ],
+          "outputs": [
+            { "name": "row", "type": "any" }
+          ]
+        }
+      },
+      {
+        "id": "node-SetAnswer",
+        "type": "ewoAc",
+        "position": { "x": 1350, "y": 200 },
+        "data": {
+          "label": "SetAnswer",
+          "operation": "SetAnswerDataAC",
+          "inputs": [
+            { "name": "key", "type": "string" },
+            { "name": "data", "type": "any" },
+            { "name": "options", "type": "object" },
+            { "name": "input", "type": "any" }
+          ],
+          "outputs": [
+            { "name": "success", "type": "boolean" },
+            { "name": "runKey", "type": "string" }
+          ]
+        }
+      },
+      {
+        "id": "node-end",
+        "type": "ewoEnd",
+        "position": { "x": 1610, "y": 200 },
+        "data": {
+          "outputs": [
+            { "name": "success", "type": "boolean" },
+            { "name": "runKey", "type": "string" }
+          ]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-EJI", "source": "node-start", "target": "node-ExtractJointIds", "sourceHandle": "output-data", "targetHandle": "input-data" },
+      { "id": "e-EJI-PCR", "source": "node-ExtractJointIds", "target": "node-ParseCellRef", "sourceHandle": "output-jointIds", "targetHandle": "input-cellRef" },
+      { "id": "e-PCR-RC-tableId", "source": "node-ParseCellRef", "target": "node-RetrieveCol", "sourceHandle": "output-table", "targetHandle": "input-tableId" },
+      { "id": "e-PCR-RC-lineId", "source": "node-ParseCellRef", "target": "node-RetrieveCol", "sourceHandle": "output-lineId", "targetHandle": "input-lineId" },
+      { "id": "e-PCR-RC-column", "source": "node-ParseCellRef", "target": "node-RetrieveCol", "sourceHandle": "output-key", "targetHandle": "input-column" },
+      { "id": "e-RC-FC", "source": "node-RetrieveCol", "target": "node-FirstCncf", "sourceHandle": "output-columns", "targetHandle": "input-rows" },
+      { "id": "e-FC-SA", "source": "node-FirstCncf", "target": "node-SetAnswer", "sourceHandle": "output-row", "targetHandle": "input-data" },
+      { "id": "e-start-SA-input", "source": "node-start", "target": "node-SetAnswer", "sourceHandle": "output-data", "targetHandle": "input-input" },
+      { "id": "e-SA-end-success", "source": "node-SetAnswer", "target": "node-end", "sourceHandle": "output-success", "targetHandle": "input-success" },
+      { "id": "e-SA-end-runKey", "source": "node-SetAnswer", "target": "node-end", "sourceHandle": "output-runKey", "targetHandle": "input-runKey" }
+    ]
+  }
+}

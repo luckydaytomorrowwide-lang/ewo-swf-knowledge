@@ -1,0 +1,60 @@
+{
+  "id": "MergeLayoutSnackingNoMapWF",
+  "version": "1.0.0",
+  "name": "MergeLayoutSnackingNoMapWF",
+  "description": "レイアウトマップをマージする。structTableConfigRowsからanchorIdが一致する行を抽出してlayoutKeyRowsを構築する。",
+  "inputs": {
+    "anchorId": { "schema": "string" },
+    "structTableConfigRows": { "schema": "any[]" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "FilterAndMerge",
+        "operation": "FilterStructTableConfigByAnchorAC",
+        "deps": {
+          "anchorId": { "sourceAcId": "$input", "sourcePort": "anchorId" },
+          "structTableConfigRows": { "sourceAcId": "$input", "sourcePort": "structTableConfigRows" }
+        },
+        "outputs": { "layoutKeyRows": {} }
+      }
+    ],
+    "outputs": {
+      "layoutKeyRows": "FilterAndMerge.layoutKeyRows"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-FilterAndMerge",
+        "when": { "type": "FilterAndMerge.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "MergeLayoutSnackingNoMapWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.85 },
+    "nodes": [
+      {
+        "id": "node-start", "type": "ewoStart", "position": { "x": 50, "y": 150 },
+        "data": { "inputs": [{ "name": "anchorId", "type": "string" }, { "name": "structTableConfigRows", "type": "any[]" }] }
+      },
+      {
+        "id": "node-FilterAndMerge", "type": "ewoAc", "position": { "x": 350, "y": 150 },
+        "data": { "label": "FilterAndMerge", "operation": "FilterStructTableConfigByAnchorAC", "inputs": [{ "name": "anchorId", "type": "string" }, { "name": "structTableConfigRows", "type": "any[]" }], "outputs": [{ "name": "layoutKeyRows", "type": "any[]" }] }
+      },
+      {
+        "id": "node-end", "type": "ewoEnd", "position": { "x": 650, "y": 150 },
+        "data": { "outputs": [{ "name": "layoutKeyRows", "type": "any[]" }] }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-filter", "source": "node-start", "target": "node-FilterAndMerge" },
+      { "id": "e-filter-end", "source": "node-FilterAndMerge", "target": "node-end", "sourceHandle": "output-layoutKeyRows", "targetHandle": "input-layoutKeyRows" }
+    ]
+  }
+}

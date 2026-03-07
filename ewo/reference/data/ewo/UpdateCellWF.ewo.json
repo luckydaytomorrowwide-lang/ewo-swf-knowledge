@@ -1,0 +1,213 @@
+{
+  "id": "UpdateCellWF",
+  "version": "1.0.0",
+  "name": "UpdateCellWF",
+  "description": "formRows配列をForEachでiterateし、各行のcellRefをパースしてupdate JSONを構築。全結果を収集後、UpdateCellACで一括更新する。",
+  "inputs": {
+    "formRows": { "schema": "object[]" }
+  },
+  "wfDef": {
+    "nodes": [
+      {
+        "id": "ParseCellRef",
+        "operation": "ParseCellRefAC",
+        "deps": {
+          "cellRef": { "sourceAcId": "$zoneInput", "sourcePort": "row.cell" }
+        },
+        "outputs": { "table": {}, "lineId": {}, "key": {} }
+      },
+      {
+        "id": "BuildUpdateCellJson",
+        "operation": "BuildUpdateCellJsonAC",
+        "deps": {
+          "tableId": { "sourceAcId": "ParseCellRef", "sourcePort": "table" },
+          "lineId": { "sourceAcId": "ParseCellRef", "sourcePort": "lineId" },
+          "key": { "sourceAcId": "ParseCellRef", "sourcePort": "key" },
+          "value": { "sourceAcId": "$zoneInput", "sourcePort": "row.data" }
+        },
+        "outputs": { "json": {} }
+      },
+
+      {
+        "id": "CollectUpdates",
+        "operation": "CollectUpdatesAC",
+        "deps": {
+          "updates": { "sourceAcId": "$zone:rowZone", "sourcePort": "allJsons" }
+        },
+        "outputs": { "updates": {} }
+      },
+      {
+        "id": "UpdateCell",
+        "operation": "UpdateCellAC",
+        "deps": {
+          "updates": { "sourceAcId": "CollectUpdates", "sourcePort": "updates" }
+        },
+        "outputs": { "updates": {} }
+      }
+    ],
+    "forEachZones": [
+      {
+        "id": "rowZone",
+        "collectionSource": {
+          "sourceAcId": "$input",
+          "sourcePort": "formRows"
+        },
+        "iterationParam": "row",
+        "nodes": ["ParseCellRef", "BuildUpdateCellJson"],
+        "outputNodeId": "BuildUpdateCellJson",
+        "outputPort": "json",
+        "outputCollection": "allJsons"
+      }
+    ],
+    "outputs": {
+      "updates": "UpdateCell.updates"
+    }
+  },
+  "wiring": {
+    "version": 1,
+    "routes": [
+      {
+        "id": "R-ParseCellRef",
+        "when": { "type": "ParseCellRef.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "BuildUpdateCellJson.tableId", "wfid": "UpdateCellWF", "map": "outputRef->payloadRef" },
+          { "type": "BuildUpdateCellJson.lineId", "wfid": "UpdateCellWF", "map": "outputRef->payloadRef" },
+          { "type": "BuildUpdateCellJson.key", "wfid": "UpdateCellWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-BuildUpdateCellJson",
+        "when": { "type": "BuildUpdateCellJson.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": []
+      },
+      {
+        "id": "R-$zone:rowZone",
+        "when": { "type": "$zone:rowZone.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "CollectUpdates.updates", "wfid": "UpdateCellWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-CollectUpdates",
+        "when": { "type": "CollectUpdates.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "UpdateCell.updates", "wfid": "UpdateCellWF", "map": "outputRef->payloadRef" }
+        ]
+      },
+      {
+        "id": "R-UpdateCell",
+        "when": { "type": "UpdateCell.done" },
+        "correlate": { "by": ["correlationid"] },
+        "emit": [
+          { "type": "wf.completed", "wfid": "UpdateCellWF", "map": "outputRef->payloadRef" }
+        ]
+      }
+    ]
+  },
+  "layout": {
+    "viewport": { "x": 0, "y": 0, "zoom": 0.7 },
+    "nodes": [
+      {
+        "id": "node-start",
+        "type": "ewoStart",
+        "position": { "x": 50, "y": 220 },
+        "data": {
+          "inputs": [{ "name": "formRows", "type": "object[]" }]
+        }
+      },
+      {
+        "id": "region-rowZone",
+        "type": "ewoForEachRegion",
+        "position": { "x": 280, "y": 80 },
+        "style": { "width": "650px", "height": "300px" },
+        "data": {
+          "label": "RowZone (formRows iterate)",
+          "zoneId": "rowZone",
+          "iterationParam": "row",
+          "outputCollection": "allJsons"
+        }
+      },
+      {
+        "id": "node-ParseCellRef",
+        "type": "ewoAc",
+        "position": { "x": 40, "y": 90 },
+        "parentNode": "region-rowZone",
+        "extent": "parent",
+        "data": {
+          "label": "ParseCellRef",
+          "operation": "ParseCellRefAC",
+          "inputs": [{ "name": "cellRef", "type": "string" }],
+          "outputs": [
+            { "name": "table", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "key", "type": "string" }
+          ]
+        }
+      },
+      {
+        "id": "node-BuildUpdateCellJson",
+        "type": "ewoAc",
+        "position": { "x": 330, "y": 90 },
+        "parentNode": "region-rowZone",
+        "extent": "parent",
+        "data": {
+          "label": "BuildUpdateCellJson",
+          "operation": "BuildUpdateCellJsonAC",
+          "inputs": [
+            { "name": "tableId", "type": "string" },
+            { "name": "lineId", "type": "string" },
+            { "name": "key", "type": "string" },
+            { "name": "value", "type": "any" }
+          ],
+          "outputs": [{ "name": "json", "type": "object" }]
+        }
+      },
+      {
+        "id": "node-CollectUpdates",
+        "type": "ewoAc",
+        "position": { "x": 1000, "y": 150 },
+        "data": {
+          "label": "CollectUpdates",
+          "operation": "CollectUpdatesAC",
+          "inputs": [{ "name": "updates", "type": "object[]" }],
+          "outputs": [{ "name": "updates", "type": "object[]" }]
+        }
+      },
+      {
+        "id": "node-UpdateCell",
+        "type": "ewoAc",
+        "position": { "x": 1270, "y": 200 },
+        "data": {
+          "label": "UpdateCell",
+          "operation": "UpdateCellAC",
+          "inputs": [{ "name": "updates", "type": "object[]" }],
+          "outputs": [{ "name": "updates", "type": "object[]" }]
+        }
+      },
+      {
+        "id": "node-end",
+        "type": "ewoEnd",
+        "position": { "x": 1530, "y": 230 },
+        "data": {
+          "outputs": [{ "name": "updates", "type": "object[]" }]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e-start-zone", "source": "node-start", "target": "region-rowZone", "sourceHandle": "output-formRows", "targetHandle": "input-collection" },
+      { "id": "e-zone-iter-parse", "source": "region-rowZone", "target": "node-ParseCellRef", "sourceHandle": "iter-out", "targetHandle": "input-cellRef" },
+      { "id": "e-parse-build-tableId", "source": "node-ParseCellRef", "target": "node-BuildUpdateCellJson", "sourceHandle": "output-table", "targetHandle": "input-tableId" },
+      { "id": "e-parse-build-lineId", "source": "node-ParseCellRef", "target": "node-BuildUpdateCellJson", "sourceHandle": "output-lineId", "targetHandle": "input-lineId" },
+      { "id": "e-parse-build-key", "source": "node-ParseCellRef", "target": "node-BuildUpdateCellJson", "sourceHandle": "output-key", "targetHandle": "input-key" },
+      { "id": "e-zone-iter-build-value", "source": "region-rowZone", "target": "node-BuildUpdateCellJson", "sourceHandle": "iter-out-data", "targetHandle": "input-value" },
+      { "id": "e-build-collect-zone", "source": "node-BuildUpdateCellJson", "target": "region-rowZone", "sourceHandle": "output-json", "targetHandle": "collect-in" },
+      { "id": "e-zone-collect", "source": "region-rowZone", "target": "node-CollectUpdates", "sourceHandle": "output-results", "targetHandle": "input-updates" },
+      { "id": "e-collect-update", "source": "node-CollectUpdates", "target": "node-UpdateCell", "sourceHandle": "output-updates", "targetHandle": "input-updates" },
+      { "id": "e-update-end", "source": "node-UpdateCell", "target": "node-end", "sourceHandle": "output-updates", "targetHandle": "input-updates" }
+    ]
+  }
+}
