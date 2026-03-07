@@ -73,6 +73,9 @@ examples
 templates  
 checklists  
 
+EWO JSONを扱う場合は
+spec/ewo-json-spec.md を参照してください。
+
 reference は必要な場合のみ参照します。
 
 spec が最優先です。
