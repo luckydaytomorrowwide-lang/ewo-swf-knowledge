@@ -1,0 +1,24 @@
+{
+  "meta": {
+    "workflowId": "DemoEwoParallelJoin",
+    "workflowName": "DemoEwoParallelJoin",
+    "correlationId": "",
+    "executedAt": "2026-03-07T12:23:49.656Z",
+    "status": "idle"
+  },
+  "input": {
+    "x": 5,
+    "n": 3
+  },
+  "outputs": null,
+  "executionLogs": [
+    "✨ %cNuxt DevTools %c Press Shift + Option + D to open DevTools color: black; border-radius: 3px 0 0 3px; padding: 2px 2px 1px 10px; background: #00DC82 border-radius: 0 3px 3px 0; padding: 2px 10px 1px 2px; background: #00DC8220 ",
+    "Loaded demo: DemoEwoParallelJoin",
+    "  Description: EWO AC1-AC5パターン（fan-out＋入れ子Join）デモ。x=3, n=5 のとき result=120。",
+    "  Nodes (5): DemoAC1[DemoAC1_ComputeSquareAC] → DemoAC2[DemoAC2_GenerateRangeAC] → DemoAC3[DemoAC3_SumArrayAC] → DemoAC4[DemoAC4_CombineResultsAC] → DemoAC5[DemoAC5_FinalCalcAC]",
+    "  Wiring routes (5): R-DemoAC1, R-DemoAC2, R-DemoAC3, R-DemoAC4, R-DemoAC5",
+    "  WF outputs: result"
+  ],
+  "eventLog": [],
+  "nodeStates": {}
+}
